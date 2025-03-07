@@ -3,10 +3,13 @@
   <Profiles />
   <Settings>
     <Setting Name="GPSReceiverType" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">UM982</Value>
+      <Value Profile="(Default)">UM980</Value>
     </Setting>
     <Setting Name="ComPort" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">COM11</Value>
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="BaseStationAddress" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">-27.57012913 153.09967038 35.258</Value>
     </Setting>
   </Settings>
 </SettingsFile>

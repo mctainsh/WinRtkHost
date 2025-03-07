@@ -25,7 +25,7 @@ namespace WinRtkHost.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("UM982")]
+        [global::System.Configuration.DefaultSettingValueAttribute("UM980")]
         public string GPSReceiverType {
             get {
                 return ((string)(this["GPSReceiverType"]));
@@ -34,10 +34,19 @@ namespace WinRtkHost.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("COM11")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string ComPort {
             get {
                 return ((string)(this["ComPort"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-27.57012913 153.09967038 35.258")]
+        public string BaseStationAddress {
+            get {
+                return ((string)(this["BaseStationAddress"]));
             }
         }
     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using WinRtkHost.Properties;
 
 namespace WinRtkHost.Models.GPS
 {
@@ -52,9 +53,11 @@ namespace WinRtkHost.Models.GPS
 				_strings.Add("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
 				_strings.Add("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.	
 
-				//	Set the precise coordinates of base station: latitude, longitude, height
-				_strings.Add("MODE BASE -27.57012913 153.09967038 35.258");
-				//_strings.Add("MODE BASE TIME 3600 1"); // Set base mode with 60 second startup and 5m optimized save error
+				var address = Settings.Default.BaseStationAddress;
+				if (address.IsNullOrEmpty())
+					_strings.Add("MODE BASE TIME 600 1");                             // Set base mode with 10 minute startup and 1m optimized save error
+				else
+					_strings.Add("MODE BASE " + Settings.Default.BaseStationAddress); // Set the precise coordinates of base station: latitude, longitude, height
 			}
 			if (Program.IsUM980)
 			{

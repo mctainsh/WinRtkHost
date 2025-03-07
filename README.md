@@ -1,29 +1,25 @@
 # WinRtkHost
 
-Simple windows application to process RTK data and send to multiple NTRIP Casters
+Simple OPEN SOURCE windows application to process RTK data and send to multiple NTRIP Casters. Also refered to as Defi mining.
 
-This project connects to LC29HDA, UM980 or UM982 RTK GNSS receiver to send RTK correction data to an NTRIP caster. The app wil automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
+This project connects a LC29HDA, UM980 or UM982 RTK GNSS receiver to send RTK correction data to NTRIP casters. The app wil automatically program the UM980 so there is no need to mess around with terminals or or the UPrecise software.
 
-All up you it will cost about US$100 to make the station with GNSS receiver, antenna (If you have a windows PC). 
+All up you it will cost about US$100 to make the station with GNSS receiver, antenna (If you have a windows PC).
 
-You can send to as many NTRIP casters as you want without the need for additional receivers or expensive splitters.
+You can send to as many NTRIP casters as you want without the need for additional receivers, antennas or splitters.
 
-NOTE 1 : Although the sample setup is configures to send data to three RTK casters, if one of the casters fails to receive the message (blocks) the other will not be impacted.
+```
+NOTE : It runs with LC29HDA, UM980 or UM982, I'll only talk about UM980 as the same applies unless stated otherwise. Also the LC29HDA isa very cheap option but the mining rewards are a bit shit.
+```
 
-NOTE 2 : ALthough LC29HDA, UM980 or UM982, I'll only talk about UM980 as the same applies unless stated otherwise.
+## Table of Contents
 
-This is a windows version of my ESP32 solution (I added this photo cos I like it but it doesn't have much to do with this project)
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
-
-## Table of Contents 
- 
 - [Project Overview](#project-overview)
-- [Hardware](#hardware)  
+- [Hardware](#hardware)
   - [Components](#components)
-  - [Wiring Diagram](#wiring-diagram) 
-- [Software](#software)  
+  - [Software](#software)
   - [Features](#features)
-  - [Key Mappings](#key-mappings) 
+  - [Key Mappings](#key-mappings)
   - [Setup & Installation](#setup--installation)
   - [Usage](#usage)
 - [License](#license)
@@ -34,192 +30,108 @@ This project enables a Windows PC act as an RTK server sending RTK corrections t
 
 ### Terms
 
-| Name | Description |
-| --- | --- |
-| RTK Client | A device or software that receives RTK correction data from a server to improve positioning accuracy. |
+| Name       | Description                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| RTK Client | A device or software that receives RTK correction data from a server to improve positioning accuracy.      |
 | RTK Server | A server that processes and distributes RTK correction data to clients. (This project builds a RTK Server) |
-| RTK Caster | A service that broadcasts RTK correction data over the internet using the NTRIP protocol. |
+| RTK Caster | A service that broadcasts RTK correction data over the internet using the NTRIP protocol.                  |
 
-## Hardware 
+## Hardware
 
-### Components 
- 
-1. **UM980 with antenna** - Witte Intelligent WTRTK-982 high-precision positioning and orientation module. I got it from AliExpress for about A$220.00 [Not affiliate link. Find your own seller](https://www.aliexpress.com/item/1005007287184287.html)
- 
-2. **Windows PC** Connect to GPS receiver		
- 
+This is the hardware I used. The links are not affiliate links and I don't recommend any of the suppliers. Shop arround and you will get a better deal and/or faster delivery.
+
+### Components
+
+1. **RTK Receiver** - One of the following
+
+   1. **UM980 with antenna** - Witte Intelligent WTRTK-980 high-precision positioning and orientation module. I got it from AliExpress for about US$100 or $US167 with fancy antenna [https://vi.aliexpress.com/item/1005008328841504.html](https://vi.aliexpress.com/item/1005008328841504.html)
+   2. **Quectel LC29HDA** - Cheapest US$40 (With antenna)  [https://vi.aliexpress.com/item/1005007513127879.html](https://vi.aliexpress.com/item/1005007513127879.html) The DA suffix is important. Also note with this one you will need an FTDI [https://vi.aliexpress.com/item/1005006445462581.html](https://vi.aliexpress.com/item/1005006445462581.html) and some wires. It is the cheapest but a bit fiddly. Also the mining rewards are less as you get fewer receiver bands.
+
+2. **Windows PC** Connect to GPS receiver
+
 3. **Wires** - Connect to receiver via USB-C port or if using LC29HDA and FDDI
 
-## Software 
+## Software
 
-### Features 
+### Features
 
 - Connected to UM980.
- 
+
 - Connects to Wifi.
 
 - Programs the UM980 to send generate RTK correction data
 
 - Sends correction data to all RTK Casters
 
+### Config parameters
 
-### Config parameters 
+Configuration is held in two locations 'WinRtkHost.exe.config' and 'ConfigX.txt' files.
 
-Configuration is held in two locations 'WinRtkHost.exe.config' and 'ConfigX.txt' files parameters are set in the "Configure Wifi" web page
+Note : You need to signup to the NTRIP caster before you use start sending data or they may block your address for 48 hours.
 
-Note : You don't need to sign up to all three. Leave the CASTER ADDRESS blank to only use one or two casters. 
+Parameters for 'WinRtkHost.exe.config'
 
-| Parameter | Usage | 
-| --- | --- | 
-| GPSReceiverType | Your WiFi network name. Note: Not all speed are supported by ESP32 |
-| Password | Your Wifi password |
-| CASTER 1 ADDRESS | Usually "ntrip.rtkdirect.com" |
+| Parameter |Usage    |
+| -------- | ---------------- |
+| GPSReceiverType    | Type of device. Valid values are  LC29H   UM980    UM982   |
+| ComPort            | Serial port the device is connected to. If you don't know, leave this blank and the App with try the first one it finds. Sample values are COM1  COM12|
+| BaseStationAddress | Leave empty if you don't have an EXACT location. IIf you do, record it as "Latitude Longitude Height" (Without quotes)                       |
 
+#### CasterX.txt
+Note : X is a number starting at 0.
 
-| Row | Usage | 
-| --- | --- | 
-| 1 | Usually "rtk2go.com", ntrip.rtkdirect.com or  |
-| 2 | Port usually 2101 |
-| 3 | Mount point name |
-| 4 | Create this with Rtk2Go signup |
+Each file represents a different destination. Only add the ones you need but be sure they are numbered from zero sequencially.
+
+| Row | Usage                                       |
+| --- | ------------------------------------------- |
+| 1   | Usually rtk2go.com, ntrip.rtkdirect.com or  |
+| 2   | Port usually 2101                           |
+| 3   | Mount point name. From caster web site      |
+| 4   | Create this with signup on caster web site  |
 
 WARNING :  Do not run without real credentials or your IP may be blocked!!
 
-### Setup & Installation 
+### Setup & Installation
 
-1. **Install VS Code** : Follow [Instructions](https://code.visualstudio.com/docs/setup/setup-overview)
+1. **Download the files** : [Everything from Code button](https://github.com/mctainsh/WinRtkHost/tree/main) or just [Download only the application](https://github.com/mctainsh/WinRtkHost/tree/540277185d19ed3b363d4e9723451ba20e1afddc/ConsoleApp). 
 
-2. **Install the PlatformIO IDE** : Download and install the [PlatformIO](https://platformio.org/install).
- 
-3. **Clone This Repository**
+2. **Place in folder** : Put the ConsoleApp files in a folder
 
-```bash
-git clone https://github.com/mctainsh/Esp32.git
-```
+3. **Sign up** : Create the accounts with [Oncony register](https://console.onocoy.com/auth/register/personal), [RtkDirect](https://cloud.rtkdirect.com/) or [RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
 
-or just copy the files from
-```
-https://github.com/mctainsh/Esp32/tree/main/UM98RTKServer/UM98RTKServer
-```
-4. **Enable the TTGO T-Display header** : To use the TTGO T-Display-S3 with the TFT_eSPI library, you need to make the following changes to the User_Setup.h file in the library.
+4. **Configure** : Configure the device type and caster details above
 
-```
-	.pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h
-	4.1. Comment out the default setup file
-		//#include <User_Setup.h>           // Default setup is root library folder
-	4.2. Uncomment the TTGO T-Display-S3 setup file
-		#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>     // For the LilyGo T-Display S3 based ESP32S3 with ST7789 170 x 320 TFT
-	4.3. Add the following line to the start of the file
-		#define DISABLE_ALL_LIBRARY_WARNINGS
-```
+5. **Run** : Run WinRtkHost
 
-### Configuration 
+6. **Review logs** : Any errors will appear on the screen. Although more detailed logs are written to the RtkLogs folder
 
-1. Create the accounts with [Oncony register](https://console.onocoy.com/auth/register/personal), [RtkDirect](https://cloud.rtkdirect.com/) or [RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
-
-2. Don't wire up anything to start with (We can let the smoke out of it later)
-
-3. Upload the program to your ESP32. 
-
-4. Power it up and check display for WIFI connection status.
-
-5. Following instruction at [WifiManager](https://github.com/tzapu/WiFiManager) to connect your ESP32 to your WIFI.
-
-6. Configure the RTK Servers you want to use in the "Configure Wifi" Screen.
-
-7. Wire up the ESP32 to UM98x. Power it fom UM98x (Sometime the ESP32 doesn't output enough beans).
-
-8. Review the status and logs through the web interface (http://x.x.x.x/i)
-
-### Important
-
-The T-Display-S3 will turn off it's display after about 30 seconds. This is OK, just press either button to turn it on again.
-
-### Display
-
-The display has several screens you can toggle through them by pressing one of the buttons.
-
-The top line of the display shows the following
-
-| Type | Usage | 
-| --- | --- | 
-| / | Rotating animation to show main loop is running |
-| Title | Title of the page currently displayed |
-| X | Connection state of RTK Server 3 |
-| X | Connection state of RTK Server 2 |
-| X | Connection state of RTK Server 1 |
-| X | Connection state of WIFI |
-| X | Connection State to UM98x |
-
-
-### General
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Home.jpg?raw=true" width="300"/>
-
-| Title | Meaning | 
-| --- | --- | 
-| Wi-Fi | Wifi IP address. | 
-| Version | Software version | 
-| Up time | How log it has been running. Max 76 days before the counter rolls over  | 
-| Speed | Now many times to process is being checked per second | 
-
-### GPS State
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-GPS.jpg?raw=true" width="300"/>
-
-| Title | Meaning | 
-| --- | --- | 
-| Type | Type of GPS device. Queried at startup | 
-| Resets |  | 
-| Packets | How many packets have been received | 
-| Serial # | GPS module serial number | 
-| Firmware | GPS module firmware verison | 
-
-### RTK Server
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-RTK.jpg?raw=true" width="300"/>
-
-Only shows the state of the first two casters
-
-| Title | Meaning | 
-| --- | --- | 
-| State | Connection state | 
-| Reconnect | Number of time the connection was lost | 
-| Sends | Number of packets sent | 
-| μs | Microseconds per byte sent | 
-
-### GPS Log
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-GPS.jpg?raw=true" width="300"/>
-
-
-### First RTK Caster Log
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C1.jpg?raw=true" width="300"/>
-
-### Second RTK Caster Log
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C2.jpg?raw=true" width="300"/>
-
-### Third RTK Caster Log
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C3.jpg?raw=true" width="300"/>
+7. **Report issues / Enhancements** : I made this over a weekend. If anyone uses it I'll add some feature to make it more useful.
 
 ## TODO
 
-1. Write instructions to install without compiling with PlatformIO (Using ESP32 Upload tool)
+1. Make some kind of web or GUI interface
 
-2. Make http sends in non-blocking to prevent one NTRIP server upsetting the others
+2. Convert to a Windows service so it runs in background without user login
 
-3. Rework the TTGO T-Display code to make the display nicer (Currently optimized for larger S3)
+3. Add averaging routing to build up an exact device location
 
-4. Put each NTRIP server details on its own page
+## Final thoughts
+It runs does mine with LC29HDA, UM980 or UM982. But the LC29HDA is very cheap option and the mining rewards are a bit shit. To be fair all no one is actually paying you real money to mine when you can get the same data from rtk2go for free.
 
-5. Make better looking STL
+<table>
+<tr><td>LC29HDA</td><td>UM980</td></tr>
+<tr><td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/LC29HDA.png?raw=true" width="300" />
+</td><td>
+<td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/UM980.png?raw=true" width="300" />
+</td></tr>
+</table>
 
-6. Build one using ESP32-S3 Mini board. Won't have display but will be very compact
+This is a windows version of my ESP32 solution (I added this photo cos I like it but it doesn't have much to do with this project)
 
-## License 
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
+
+## License
+
 This project is licensed under the GNU General Public License - see the [LICENSE](https://github.com/mctainsh/Esp32/blob/main/LICENSE)  file for details.
 
 ---
-
-
