@@ -119,14 +119,17 @@ WARNING :  Do not run without real credentials or your IP may be blocked!!
 It runs does mine with LC29HDA, UM980 or UM982. But the LC29HDA is very cheap option and the mining rewards are a bit shit. To be fair all no one is actually paying you real money to mine when you can get the same data from rtk2go for free.
 
 <table>
-<tr><td>LC29HDA</td><td>UM980</td></tr>
-<tr><td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/LC29HDA.png?raw=true" width="300" />
-</td><td>
-<td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/UM980.png?raw=true" width="300" />
-</td></tr>
+	<tr>
+		<td>LC29HDA</td>
+		<td>UM980</td>
+	</tr>
+	<tr>
+		<td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/LC29HDA.png?raw=true" width="300" /></td>
+		<td><img src="https://github.com/mctainsh/WinRtkHost/blob/main/Photos/UM980.png?raw=true" width="300" /></td>
+	</tr>
 </table>
 
-This is a windows version of my ESP32 solution (I added this photo cos I like it but it doesn't have much to do with this project)
+This project is a windows version of my ESP32 solution. The ESP32 version is still flakey but I added this photo cos I like it.
 
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
 
