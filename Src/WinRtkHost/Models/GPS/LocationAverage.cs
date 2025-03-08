@@ -16,9 +16,9 @@ namespace WinRtkHost.Models.GPS
 		uint _count = 0;
 
 		// Set totals
-		double[] _dLats = new double[LOCATION_SET_SIZE];
-		double[] _dLngs = new double[LOCATION_SET_SIZE];
-		double[] _dZs = new double[LOCATION_SET_SIZE];
+		readonly double[] _dLats = new double[LOCATION_SET_SIZE];
+		readonly double[] _dLngs = new double[LOCATION_SET_SIZE];
+		readonly double[] _dZs = new double[LOCATION_SET_SIZE];
 		uint _setIndex = 0;
 
 		// True if all well
@@ -60,8 +60,7 @@ namespace WinRtkHost.Models.GPS
 			double lng = ParseLatLong(parts[4], 3, parts[5] == "E");
 
 			// Height
-			double height = 0;
-			if (!double.TryParse(parts[9], out height))
+			if (!double.TryParse(parts[9], out double height))
 				height = -1;
 
 			// Satellite count

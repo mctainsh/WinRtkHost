@@ -1,7 +1,13 @@
+/// <summary>
+/// Show shifting array for new data
+/// </summary>
+//#define VERBOSE_SHIFT
+
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
+
 
 namespace WinRtkHost.Models.GPS
 {
@@ -9,7 +15,6 @@ namespace WinRtkHost.Models.GPS
 	{
 		const bool VERBOSE = true;
 		const int MAX_BUFF = 2560;
-
 
 		/// <summary>
 		/// State of the build packet
@@ -19,7 +24,8 @@ namespace WinRtkHost.Models.GPS
 		{
 			BuildStateNone,
 			BuildStateBinary,
-			BuildStateAscii
+			BuildStateAscii,
+			BuildStateRtkAscii,
 		}
 
 		/// <summary>
@@ -166,11 +172,10 @@ namespace WinRtkHost.Models.GPS
 
 				_buildState = BuildState.BuildStateNone;
 
-				if (VERBOSE)
-				{
-					Log.Ln($"IN  BUFF {_binaryIndex} : {HexDump(_byteArray, _binaryIndex)}");
-					Log.Ln($"IN  DATA {n} : {HexDump(pData, dataSize)}");
-				}
+#if VERBOSE_SHIFT
+				Log.Ln($"IN  BUFF {_binaryIndex} : {HexDump(_byteArray, _binaryIndex)}");
+				Log.Ln($"IN  DATA {n} : {HexDump(pData, dataSize)}");
+#endif
 
 				n += 1;
 
@@ -199,10 +204,9 @@ namespace WinRtkHost.Models.GPS
 				}
 				_binaryIndex = 0;
 
-				if (VERBOSE)
-				{
-					Log.Ln($"OUT DATA {n} : {HexDump(pData, dataSize)}");
-				}
+#if VERBOSE_SHIFT
+				Log.Ln($"OUT DATA {n} : {HexDump(pData, dataSize)}");
+#endif
 			}
 			return true;
 		}
@@ -213,6 +217,7 @@ namespace WinRtkHost.Models.GPS
 		/// <returns>True if we are still processing. False if bad data for type of packlet</returns>
 		bool ProcessGpsSerialByte(byte ch)
 		{
+			// Process the byte according to state machine
 			switch (_buildState)
 			{
 				// Lookiung for the start of a packet
@@ -246,6 +251,10 @@ namespace WinRtkHost.Models.GPS
 				case BuildState.BuildStateBinary:
 					return BuildBinary(ch);
 
+				// Building RTK ASCII packet
+				case BuildState.BuildStateRtkAscii:
+					return BuildRtkAscii(ch);
+
 				// Building ASCII packet
 				case BuildState.BuildStateAscii:
 					return BuildAscii(ch);
@@ -266,7 +275,7 @@ namespace WinRtkHost.Models.GPS
 		{
 			if (VERBOSE && _skippedIndex > 0)
 			{
-				Log.Ln($"Skipped {_skippedIndex} : {HexDump(_skippedArray, _skippedIndex)}");
+				Log.Ln($"Skipped {_skippedIndex} : {_skippedArray.HexAsciDumpDetail(_skippedIndex)}");
 				_skippedIndex = 0;
 			}
 		}
@@ -291,17 +300,30 @@ namespace WinRtkHost.Models.GPS
 		{
 			_byteArray[_binaryIndex++] = ch;
 
+			// Checl for text messages
+			if (_binaryIndex == 3)
+			{
+				uint lengthPrefix = GetUInt(8, 14 - 8);
+				if (lengthPrefix == 2)
+				{
+					_buildState = BuildState.BuildStateRtkAscii;
+					return true;
+				}
+				if (lengthPrefix != 0)
+				{
+					Log.Ln($"Binary length prefix too big {_byteArray[0]:X2} {_byteArray[1]:X2} - {lengthPrefix}");
+					return false;
+				}
+			}
+
 			if (_binaryIndex < 12)
 				return true;
 
 			if (_binaryLength == 0 && _binaryIndex >= 4)
 			{
 				uint lengthPrefix = GetUInt(8, 14 - 8);
-				if (lengthPrefix != 0)
-				{
-					Log.Ln($"Binary length prefix too big {_byteArray[0]:X2} {_byteArray[1]:X2}");
-					return false;
-				}
+
+
 				_binaryLength = (int)(GetUInt(14, 10) + 6);
 				if (_binaryLength == 0 || _binaryLength >= MAX_BUFF)
 				{
@@ -318,12 +340,13 @@ namespace WinRtkHost.Models.GPS
 
 			if (_binaryIndex >= _binaryLength)
 			{
+				uint lengthPrefix = GetUInt(8, 14 - 8);
 				uint parity = GetUInt((_binaryLength - 3) * 8, 24);
 				uint calculated = Crc24.RtkCrc24( _byteArray, _binaryLength);
 				uint type = GetUInt(24, 12);
 				if (parity != calculated)
 				{
-					Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryIndex}] {HexDump(_byteArray, _binaryIndex)}");
+					Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryIndex}] {_byteArray.HexAsciDump(_binaryIndex)}");
 					return false;
 				}
 
@@ -360,6 +383,47 @@ namespace WinRtkHost.Models.GPS
 		}
 
 		/// <summary>
+		/// Process the RTK ASCII data
+		/// </summary>
+		bool BuildRtkAscii(byte ch)
+		{
+			if (ch == '\r' || ch == '\n')
+				return true;
+
+			if (ch == '\0')
+			{
+				if (_binaryIndex < 2)
+				{
+					Log.Ln("RTK <- ''");
+				}
+				else
+				{
+					_byteArray[_binaryIndex] = 0;
+					Log.Ln("RTK <- " + Encoding.ASCII.GetString(_byteArray, 2, _binaryIndex-2));
+				}
+				_buildState = BuildState.BuildStateNone;
+				return true;
+			}
+
+			if (_binaryIndex > 254)
+			{
+				Log.Ln($"RTK ASCII Overflowing {_byteArray.HexAsciDump(_binaryIndex)}");
+				_buildState = BuildState.BuildStateNone;
+				return false;
+			}
+
+			_byteArray[_binaryIndex++] = ch;
+
+			if (ch < 32 || ch > 126)
+			{
+				Log.Ln($"RTK Non-ASCII {_byteArray.HexAsciDumpDetail(_binaryIndex)}");
+				_buildState = BuildState.BuildStateNone;
+				return false;
+			}
+			return true;
+		}
+
+		/// <summary>
 		/// Process the ASCII data
 		/// </summary>
 		bool BuildAscii(byte ch)
@@ -377,7 +441,7 @@ namespace WinRtkHost.Models.GPS
 
 			if (_binaryIndex > 254)
 			{
-				Log.Ln($"ASCII Overflowing {HexAsciDump(_byteArray, _binaryIndex)}");
+				Log.Ln($"ASCII Overflowing {_byteArray.HexAsciDumpDetail(_binaryIndex)}");
 				_buildState = BuildState.BuildStateNone;
 				return false;
 			}
@@ -386,7 +450,7 @@ namespace WinRtkHost.Models.GPS
 
 			if (ch < 32 || ch > 126)
 			{
-				Log.Ln($"Non-ASCII {HexDump(_byteArray, _binaryIndex)}");
+				Log.Ln($"Non-ASCII {_byteArray.HexAsciDumpDetail(_binaryIndex)}");
 				_buildState = BuildState.BuildStateNone;
 				return false;
 			}
@@ -409,9 +473,13 @@ namespace WinRtkHost.Models.GPS
 				//Log.Note($"GPS <- '{line}'");
 				Log.Note(_locationAverage.ProcessGGALocation(line));
 			}
+			else if (line.StartsWith("$G"))
+			{
+				//Log.Note($"GPS <- '{line}'");
+			}
 			else
 			{
-				//Log.Ln($"GPS <- '{line}'");
+				Log.Ln($"GPS <- '{line}'");
 			}
 
 			CommandQueue.IsCommandResponse(line);
@@ -423,26 +491,6 @@ namespace WinRtkHost.Models.GPS
 			for (int i = pos; i < pos + len; i++)
 				bits = (uint)((bits << 1) + (_byteArray[i / 8] >> 7 - i % 8 & 1u));
 			return bits;
-		}
-
-		string HexDump(byte[] data, int length)
-		{
-			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < length; i++)
-			{
-				sb.AppendFormat("{0:X2} ", data[i]);
-			}
-			return sb.ToString();
-		}
-
-		string HexAsciDump(byte[] data, int length)
-		{
-			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < length; i++)
-			{
-				sb.AppendFormat("{0:X2} ", data[i]);
-			}
-			return sb.ToString();
 		}
 
 		/// <summary>
@@ -482,6 +530,5 @@ namespace WinRtkHost.Models.GPS
 				_caster.Shutdown();
 			return ToString();
 		}
-
 	}
 }

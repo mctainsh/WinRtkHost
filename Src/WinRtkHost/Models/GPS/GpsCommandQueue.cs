@@ -76,6 +76,10 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		public void StartAsciiProcess()
 		{
+			// Don't do it if data in the queue
+			if (_strings.Any())
+				return;
+
 			Log.Ln("GPS Queue Start ASCII Initialise Process");
 			_strings.Clear();
 
