@@ -55,44 +55,51 @@ namespace WinRtkHost
 				if (portName.IsNullOrEmpty())
 				{
 					portName = ports[0];
-					Log.Ln($"No COM port specified (Will use '{portName}')");
+					Log.Ln($"No COM port specified (Using '{portName}')");
 				}
 				else if (!ports.Contains(portName))
 				{
 					portName = ports[0];
-					Log.Ln($"Selected '{portName}' port not found (Will use '{portName}')");
+					Log.Ln($"Selected '{portName}' port not found (Using '{portName}')");
 				}
 
-				// Open serial port
-				var port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
-				port.Open();
-				Log.Ln($"Port {portName} opened");
-
-				// Create the GPS parser
-				_gpsParser = new GpsParser(port);
+				SerialPort port = RestartSerialPort(portName);
 
 				var lastStatus = DateTime.Now; // Slow status timer
 
 				// Loop until 'q' key is pressed
 				while (true)
 				{
-					// Q to exit
-					if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
-						break;
-
-					System.Threading.Thread.Sleep(100);
-
-					// Check for timeouts
-					_gpsParser.CheckTimeouts();
-
-					// TODO : Every minute display the current stats
-					if ((DateTime.Now - lastStatus).TotalSeconds > 60)
+					try
 					{
-						lastStatus = DateTime.Now;
-						LogStatus(_gpsParser);
-					}
+						// Check the serial port is open
+						if (!port.IsOpen)
+						{
+							Log.Ln("Port closed");
+							System.Threading.Thread.Sleep(5_000);
+							port = RestartSerialPort(portName);
+						}
 
-					// Do nothing, just loop
+						// Q to exit
+						if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
+							break;
+
+						System.Threading.Thread.Sleep(100);
+
+						// Check for timeouts
+						_gpsParser.CheckTimeouts();
+
+						// TODO : Every minute display the current stats
+						if ((DateTime.Now - lastStatus).TotalSeconds > 60)
+						{
+							lastStatus = DateTime.Now;
+							LogStatus(_gpsParser);
+						}
+					}
+					catch (Exception ex)
+					{
+						Log.Ln("E932: In main loop " + ex.ToString());
+					}
 				}
 				port.Close();
 				_gpsParser.Shutdown();
@@ -102,6 +109,23 @@ namespace WinRtkHost
 			{
 				Log.Ln(ex.ToString());
 			}
+		}
+
+		/// <summary>
+		/// Restablish the serial port comminications
+		/// </summary>
+		static SerialPort RestartSerialPort(string portName)
+		{
+			// Open serial port
+			var port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
+			port.Open();
+			Log.Ln($"Port {portName} opened");
+
+			// Create the GPS parser
+			if (_gpsParser != null)
+				_gpsParser.Shutdown();
+			_gpsParser = new GpsParser(port);
+			return port;
 		}
 
 		/// <summary>

@@ -15,26 +15,45 @@ namespace WinRtkHost.Models.GPS
 		string _deviceSerial = "UNKNOWN";
 		readonly SerialPort _port;
 
-		public GpsCommandQueue(SerialPort port)
-		{
-			_port = port;
-		}
-
 		public string GetDeviceType() => _deviceType;
 		public string GetDeviceFirmware() => _deviceFirmware;
 		public string GetDeviceSerial() => _deviceSerial;
+
+		/// <summary>
+		/// Constructor. Setup version request but don't run it
+		/// </summary>
+		public GpsCommandQueue(SerialPort port)
+		{
+			// Handy for debugging blank system
+			//_strings.Add("FRESET");
+
+			_port = port;
+			if (Program.IsLC29H)
+			{
+				_strings.Add("PQTMVERNO");
+			}
+			if (Program.IsUM980 || Program.IsUM982)
+			{
+				_strings.Add("VERSION");     // Used to determine device type
+			}
+		}
 
 		/// <summary>
 		/// Start the initialisation process for RTK messages
 		/// </summary>
 		public void StartRtkInitialiseProcess()
 		{
-			Log.Ln("GPS Queue Start RTK Initialise Process");
-			_strings.Clear();
 
+			// Don't do it if data in the queue
+			if (_strings.Any())
+			{
+				Log.Ln("ERROR : GPS Queue Start RTK Initialise Process - Already has data");
+				return;
+			}
+
+			Log.Ln("GPS Queue Start RTK Initialise Process");
 			if (Program.IsLC29H)
 			{
-				_strings.Add("PQTMVERNO");
 				_strings.Add("PQTMCFGSVIN,W,1,43200,0,0,0,0");
 				_strings.Add("PAIR432,1");
 				_strings.Add("PAIR434,1");
@@ -43,7 +62,7 @@ namespace WinRtkHost.Models.GPS
 			if (Program.IsUM980 || Program.IsUM982)
 			{
 				// Setup RTCM V3
-				_strings.Add("VERSION");     // Used to determine device type
+				_strings.Add("GPGGA 1");     // Used to determine device type
 				_strings.Add("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
 				_strings.Add("RTCM1033 30"); // Receiver and antenna description
 				_strings.Add("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
@@ -78,11 +97,12 @@ namespace WinRtkHost.Models.GPS
 		{
 			// Don't do it if data in the queue
 			if (_strings.Any())
+			{
+				Log.Ln("ERROR : GPS Queue Start ASCII Initialise Process - Already has data");
 				return;
+			}
 
 			Log.Ln("GPS Queue Start ASCII Initialise Process");
-			_strings.Clear();
-
 			if (Program.IsLC29H)
 			{
 				// This should just work
@@ -95,11 +115,11 @@ namespace WinRtkHost.Models.GPS
 			SendTopCommand();
 		}
 
-		public void CheckForVersion(string str)
+		/// <summary>
+		/// Extract the version information for UM98x devices
+		/// </summary>
+		public void ProcessUM98VersionResponse(string str)
 		{
-			if (!str.StartsWith("#VERSION"))
-				return;
-
 			var sections = str.Split(';');
 			if (sections.Length < 1)
 			{
@@ -118,7 +138,7 @@ namespace WinRtkHost.Models.GPS
 			var serialPart = parts[3].Split('-');
 			_deviceSerial = serialPart[0];
 
-			string command = "CONFIG SIGNALGROUP 3 6"; // Assume for UM982
+			//string command = "CONFIG SIGNALGROUP 3 6"; // Assume for UM982
 			if (_deviceType == "UM982")
 			{
 				Log.Ln("UM982 Detected");
@@ -126,13 +146,13 @@ namespace WinRtkHost.Models.GPS
 			else if (_deviceType == "UM980")
 			{
 				Log.Ln("UM980 Detected");
-				command = "CONFIG SIGNALGROUP 2"; // for UM980
+				//command = "CONFIG SIGNALGROUP 2"; // for UM980
 			}
 			else
 			{
 				Log.Ln($"DANGER 303 Unknown Device '{_deviceType}' Detected in {str}");
 			}
-			_strings.Add(command);
+			//_strings.Add(command);
 		}
 
 		/// <summary>
@@ -186,7 +206,9 @@ namespace WinRtkHost.Models.GPS
 		}
 
 
-
+		/// <summary>
+		/// Check if this is an ack for a command sent by me
+		/// </summary>
 		public bool IsCommandResponse(string str)
 		{
 			if (!_strings.Any())
@@ -271,7 +293,10 @@ namespace WinRtkHost.Models.GPS
 		bool ProcessUM98x(string str)
 		{
 			if (str.StartsWith("#VERSION"))
+			{
+				ProcessUM98VersionResponse(str);
 				return true;
+			}
 
 			if (!VerifyChecksumUM98x(str))
 			{
@@ -296,9 +321,7 @@ namespace WinRtkHost.Models.GPS
 			_strings.Remove(_strings.First());
 
 			if (!_strings.Any())
-			{
-				Log.Ln("GPS Startup Commands Complete");
-			}
+				Log.Ln("GPS UM98x Commands Complete");
 
 			// Send next command
 			SendTopCommand();

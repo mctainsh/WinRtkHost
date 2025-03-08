@@ -28,24 +28,21 @@ namespace WinRtkHost.Models.GPS
 		/// Extract location for summing totals
 		/// </summary>
 		/// <param name="line">GGA line</param>
-		/// <returns>Result string</returns>
-		public string ProcessGGALocation(string line)
+		public void ProcessGGALocation(string line)
 		{
-			string result;
 			var parts = line.Split(',');
-
 			if (parts.Length < 14)
 			{
 				Log.Ln($"\tPacket length too short {parts.Length} {line}");
-				return "Packet too short";
+				return;
 			}
 
 			// Read time
-			string time = parts[1];
-			if (time.Length > 7)
-			{
-				time = time.Insert(4, ":").Insert(2, ":").Substring(0, 8);
-			}
+			//string time = parts[1];
+			//if (time.Length > 7)
+			//{
+			//	time = time.Insert(4, ":").Insert(2, ":").Substring(0, 8);
+			//}
 
 			// Read GPS Quality
 			string quality = parts[6];
@@ -75,12 +72,12 @@ namespace WinRtkHost.Models.GPS
 			if (lng == 0.0 || lat == 0.0 || nQuality < 1)
 			{
 				Log.Ln($"No location data in {line}");
-				return "No location";
+				return;
 			}
 
 			_gpsConnected = true;
 
-			result = $"H:{height} #{satellites} Q:{quality}";
+			//Log.Note($"H:{height} #{satellites} Q:{quality}");
 
 			// Build the set totals
 			if (_setIndex < LOCATION_SET_SIZE)
@@ -89,7 +86,7 @@ namespace WinRtkHost.Models.GPS
 				_dLats[_setIndex] = lat;
 				_dZs[_setIndex] = height;
 				_setIndex++;
-				return result;
+				return;
 			}
 
 			// Make the mean and standard deviations
@@ -113,8 +110,6 @@ namespace WinRtkHost.Models.GPS
 				_dZTotal += dZMean - _dZOrg;
 			}
 			_count++;
-
-			return result;
 		}
 
 		/// <summary>
@@ -146,7 +141,10 @@ namespace WinRtkHost.Models.GPS
 			dLatDev = Math.Sqrt(dLatDev / LOCATION_SET_SIZE);
 			dZDev = Math.Sqrt(dZDev / LOCATION_SET_SIZE);
 
-			Log.Note($"Location {_count} : {dLatMean} {dLngMean} {dZMean:F4} : {dLatDev * 1000.0} {dLngDev * 1000.0} {dZDev}");
+			// Convert standard deviation to millimeters
+			const double MM_PER_DEGREE = 111_320_000.0;
+
+			Log.Note($"Last {LOCATION_SET_SIZE} : {dLatMean}° {dLngMean}° {dZMean:F4}m : {dLatDev * MM_PER_DEGREE:N0}mm {dLngDev * MM_PER_DEGREE:N0}mm {dZDev*1000:N0}mm");
 			_setIndex = 0;
 		}
 
@@ -158,7 +156,7 @@ namespace WinRtkHost.Models.GPS
 		{
 			if (_count == 0)
 				return;
-			Log.Note($"Location Mean {_count}");
+			Log.Note($"Location after {_count * LOCATION_SET_SIZE}");
 			Log.Note($"\tLatitude  {_dLatOrg + _dLatTotal / _count} ");
 			Log.Note($"\tLongitude {_dLngOrg + _dLngTotal / _count} ");
 			Log.Note($"\tHeight    {_dZOrg + _dZTotal / _count}m ");

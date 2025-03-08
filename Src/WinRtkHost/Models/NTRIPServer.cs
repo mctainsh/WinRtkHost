@@ -7,10 +7,15 @@ using System.Text;
 
 namespace WinRtkHost.Models
 {
+	/// <summary>
+	/// I should have named this differently. This class is responsible for managing 
+	/// the connection to the NTRIP caster. It is a simple TCP/IP connection that 
+	/// sends data to the caster.
+	/// </summary>
 	public class NTRIPServer
 	{
 		/// <summary>
-		/// Retry interval for socket connection failures
+		/// Retry interval for socket connection failures.
 		/// </summary>
 		static readonly int[] SOCKET_RETRY_INTERVALS_S = new int[] { 15, 30, 60, 300 };
 
@@ -52,7 +57,6 @@ namespace WinRtkHost.Models
 		/// <summary>
 		/// Queue control
 		/// </summary>
-		//Object _queueLock = new Object();
 		readonly List<byte[]> _outboundQueue = new List<byte[]>();
 
 		/// <summary>
@@ -145,12 +149,14 @@ namespace WinRtkHost.Models
 		{
 			if (_client?.Connected == true)
 			{
+				// Send the connected data
 				ConnectedProcessing(pBytes, length);
 			}
 			else
 			{
+				// Not connected. Try to reconnect
 				_wasConnected = false;
-				_status = "Disconn...";
+				_status = "Disconnected";
 				Reconnect();
 			}
 		}
@@ -277,8 +283,15 @@ namespace WinRtkHost.Models
 		/// <returns>False if retry was not attempted</returns>
 		bool Reconnect()
 		{
+			// If we have tried recently, then do not try again
 			if ((DateTime.Now - _wifiConnectTime).TotalSeconds < SOCKET_RETRY_INTERVALS_S[_reconnectAttempt])
 				return false;
+
+			// Clean out the send queue
+			lock (_outboundQueue)
+			{
+				_outboundQueue.Clear();
+			}
 
 			// Record when we last tried
 			_wifiConnectTime = DateTime.Now;

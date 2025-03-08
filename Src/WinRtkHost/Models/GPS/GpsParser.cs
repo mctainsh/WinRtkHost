@@ -80,7 +80,7 @@ namespace WinRtkHost.Models.GPS
 		/// <summary>
 		/// Average location builder
 		/// </summary>
-		readonly LocationAverage _locationAverage = new LocationAverage();
+		readonly static LocationAverage _locationAverage = new LocationAverage();
 
 		/// <summary>
 		/// Status of the GPS connection. False if we have not received a packet in the last 60 seconds
@@ -115,6 +115,7 @@ namespace WinRtkHost.Models.GPS
 			// Add receiver event handler
 			_port = port;
 			_port.DataReceived += OnSerialData;
+			_port.ErrorReceived += OnSerialError;
 
 			CommandQueue = new GpsCommandQueue(port);
 
@@ -123,6 +124,14 @@ namespace WinRtkHost.Models.GPS
 
 			// Don't initialise. Wait for GPS to timeout that way we won't lose datum
 			//CommandQueue.StartRtkInitialiseProcess();
+		}
+
+		/// <summary>
+		/// Serial port communication error
+		/// </summary>
+		private void OnSerialError(object sender, SerialErrorReceivedEventArgs e)
+		{
+			Log.Ln($"E401 - Serial error {e.EventType}");
 		}
 
 		/// <summary>
@@ -150,18 +159,27 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		void OnSerialData(object sender, SerialDataReceivedEventArgs e)
 		{
-			// Read available data from port
-			var port = (SerialPort)sender;
-			var bytes = port.BytesToRead;
-			_maxBufferSize = Math.Max(_maxBufferSize, bytes);
-			var data = new byte[bytes];
-			port.Read(data, 0, bytes);
+			try
+			{
+				// Read available data from port
+				var port = (SerialPort)sender;
+				var bytes = port.BytesToRead;
+				_maxBufferSize = Math.Max(_maxBufferSize, bytes);
+				var data = new byte[bytes];
+				port.Read(data, 0, bytes);
 
-			// Process the data
-			ProcessStream(data);
+				// Process the data
+				ProcessStream(data);
+			}
+			catch (Exception ex)
+			{
+				Log.Ln($"E400 - Serial data error {ex}");
+			}
 		}
 
-
+		/// <summary>
+		/// Process what we have received from the GPS unit
+		/// </summary>
 		bool ProcessStream(byte[] pData)
 		{
 			var dataSize = pData.Length;
@@ -471,7 +489,7 @@ namespace WinRtkHost.Models.GPS
 			if (line.StartsWith("$GNGGA"))
 			{
 				//Log.Note($"GPS <- '{line}'");
-				Log.Note(_locationAverage.ProcessGGALocation(line));
+				_locationAverage.ProcessGGALocation(line);
 			}
 			else if (line.StartsWith("$G"))
 			{
@@ -512,12 +530,12 @@ namespace WinRtkHost.Models.GPS
 			}
 
 			// Check for GPS ASCII timeout
-			if ((DateTime.Now - _timeOfLastAsciiMessage).TotalSeconds > 81)
+			if ((DateTime.Now - _timeOfLastAsciiMessage).TotalSeconds > 31)
 			{
 				_gpsConnected = false;
 				Log.Ln("W701 - GPS ASCII Timeout");
 				CommandQueue.StartAsciiProcess();
-				_timeOfLastRtkMessage = DateTime.Now;
+				_timeOfLastAsciiMessage = DateTime.Now;
 			}
 		}
 
