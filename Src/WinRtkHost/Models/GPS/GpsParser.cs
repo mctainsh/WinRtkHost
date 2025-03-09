@@ -151,6 +151,7 @@ namespace WinRtkHost.Models.GPS
 				$"Read errors {_readErrorCount:N0}{NL}" +
 				$"Max buff    {_maxBufferSize}{NL}" +
 				$"ASCII ptks  {_totalAsciiPackets}{NL}" +
+				$"Location    {_locationAverage.LogMeanAndStandardDeviations()}{NL}" +
 				$"{counts}";
 		}
 
@@ -339,9 +340,6 @@ namespace WinRtkHost.Models.GPS
 
 			if (_binaryLength == 0 && _binaryIndex >= 4)
 			{
-				uint lengthPrefix = GetUInt(8, 14 - 8);
-
-
 				_binaryLength = (int)(GetUInt(14, 10) + 6);
 				if (_binaryLength == 0 || _binaryLength >= MAX_BUFF)
 				{
@@ -358,7 +356,6 @@ namespace WinRtkHost.Models.GPS
 
 			if (_binaryIndex >= _binaryLength)
 			{
-				uint lengthPrefix = GetUInt(8, 14 - 8);
 				uint parity = GetUInt((_binaryLength - 3) * 8, 24);
 				uint calculated = Crc24.RtkCrc24( _byteArray, _binaryLength);
 				uint type = GetUInt(24, 12);

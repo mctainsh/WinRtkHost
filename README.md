@@ -44,7 +44,10 @@ This is the hardware I used. The links are not affiliate links and I don't recom
 
 1. **RTK Receiver** - One of the following
 
-   1. **UM980 with antenna** - Witte Intelligent WTRTK-980 high-precision positioning and orientation module. I got it from AliExpress for about US$100 or $US167 with fancy antenna [https://vi.aliexpress.com/item/1005008328841504.html](https://vi.aliexpress.com/item/1005008328841504.html)
+   1. **UM980** - Two options depending on your location and budget
+      1. GNSS store has a UM980 packaged nicely [https://gnss.store/unicore-gnss-modules/247-401-elt0222.html](https://gnss.store/unicore-gnss-modules/247-401-elt0222.html)
+      2. Unpackaged from AliExpress for about US$100 or $US167 with fancy antenna [https://vi.aliexpress.com/item/1005008328841504.html](https://vi.aliexpress.com/item/1005008328841504.html)
+
    2. **Quectel LC29HDA** - Cheapest US$40 (With antenna)  [https://vi.aliexpress.com/item/1005007513127879.html](https://vi.aliexpress.com/item/1005007513127879.html) The DA suffix is important. Also note with this one you will need an FTDI [https://vi.aliexpress.com/item/1005006445462581.html](https://vi.aliexpress.com/item/1005006445462581.html) and some wires. It is the cheapest but a bit fiddly. Also the mining rewards are less as you get fewer receiver bands.
 
 2. **Windows PC** Connect to GPS receiver

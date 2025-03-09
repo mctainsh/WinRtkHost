@@ -1,28 +1,21 @@
 using System;
+using System.Collections.Generic;
 
 namespace WinRtkHost.Models.GPS
 {
+	/// <summary>
+	/// Average the location over time. 
+	/// Note : This may suffer from the law of large numbers so after a certain time the average may not be accurate
+	/// </summary>
 	public class LocationAverage
 	{
-		const int LOCATION_SET_SIZE = 60;
-
-		// Large totals
-		double _dLngOrg;
-		double _dLatOrg;
-		double _dZOrg;
-		double _dLngTotal = 0;
-		double _dLatTotal = 0;
-		double _dZTotal = 0;
-		uint _count = 0;
+		/// <summary>
+		/// Convert standard deviation to millimeters
+		/// </summary>
+		const double MM_PER_DEGREE = 111_320_000.0;
 
 		// Set totals
-		readonly double[] _dLats = new double[LOCATION_SET_SIZE];
-		readonly double[] _dLngs = new double[LOCATION_SET_SIZE];
-		readonly double[] _dZs = new double[LOCATION_SET_SIZE];
-		uint _setIndex = 0;
-
-		// True if all well
-		bool _gpsConnected = false;
+		readonly List<GeoPoint> _points = new List<GeoPoint>();
 
 		/// <summary>
 		/// Extract location for summing totals
@@ -48,9 +41,7 @@ namespace WinRtkHost.Models.GPS
 			string quality = parts[6];
 			int nQuality = 0;
 			if (quality.Length > 0)
-			{
 				nQuality = int.Parse(quality);
-			}
 
 			// Location
 			double lat = ParseLatLong(parts[2], 2, parts[3] == "S");
@@ -61,7 +52,7 @@ namespace WinRtkHost.Models.GPS
 				height = -1;
 
 			// Satellite count
-			string satellites = parts[7];
+			//string satellites = parts[7];
 			//int sat = 0;
 			//if (satellites.Length > 0)
 			//{
@@ -75,91 +66,61 @@ namespace WinRtkHost.Models.GPS
 				return;
 			}
 
-			_gpsConnected = true;
+			// We have a good result
+			Log.Note(line);
+
+			//_gpsConnected = true;
 
 			//Log.Note($"H:{height} #{satellites} Q:{quality}");
 
-			// Build the set totals
-			if (_setIndex < LOCATION_SET_SIZE)
-			{
-				_dLngs[_setIndex] = lng;
-				_dLats[_setIndex] = lat;
-				_dZs[_setIndex] = height;
-				_setIndex++;
-				return;
-			}
+			// Don't average fixed locations
+			if (7 != nQuality)
+				_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
 
-			// Make the mean and standard deviations
-			double dLngMean = 0;
-			double dLatMean = 0;
-			double dZMean = 0;
-			LogMeanAndStandardDeviations(ref dLngMean, ref dLatMean, ref dZMean);
-			LogMeanLocations();
-
-			// Start the process
-			if (_count == 0)
-			{
-				_dLngOrg = dLngMean;
-				_dLatOrg = dLatMean;
-				_dZOrg = dZMean;
-			}
-			else
-			{
-				_dLngTotal += dLngMean - _dLngOrg;
-				_dLatTotal += dLatMean - _dLatOrg;
-				_dZTotal += dZMean - _dZOrg;
-			}
-			_count++;
+			// Truncate the list to last 48 hours
+			const int MAX_POINTS = 48 * 60 * 60;
+			while (_points.Count > MAX_POINTS)
+				_points.RemoveAt(0);
 		}
 
 		/// <summary>
 		/// Log the mean and standard deviations
 		/// </summary>
-		void LogMeanAndStandardDeviations(ref double dLngMean, ref double dLatMean, ref double dZMean)
+		internal string LogMeanAndStandardDeviations()
 		{
-			for (int i = 0; i < LOCATION_SET_SIZE; i++)
+			var count = _points.Count;
+			if (count < 1)
+				return "No data";
+			double dLngMean = 0;
+			double dLatMean = 0;
+			double dZMean= 0;
+
+			// Calculate the mean
+			foreach (var p in _points)
 			{
-				dLngMean += _dLngs[i];
-				dLatMean += _dLats[i];
-				dZMean += _dZs[i];
+				dLngMean += p.Longitude;
+				dLatMean += p.Latitude;
+				dZMean += p.Height;
 			}
-			dLngMean /= LOCATION_SET_SIZE;
-			dLatMean /= LOCATION_SET_SIZE;
-			dZMean /= LOCATION_SET_SIZE;
+			dLngMean /= count;
+			dLatMean /= count;
+			dZMean /= count;
 
 			// Calculate the standard deviation
 			double dLngDev = 0;
 			double dLatDev = 0;
 			double dZDev = 0;
-			for (int i = 0; i < LOCATION_SET_SIZE; i++)
+			foreach (var p in _points)
 			{
-				dLngDev += (_dLngs[i] - dLngMean) * (_dLngs[i] - dLngMean);
-				dLatDev += (_dLats[i] - dLatMean) * (_dLats[i] - dLatMean);
-				dZDev += (_dZs[i] - dZMean) * (_dZs[i] - dZMean);
+				dLngDev += (p.Longitude - dLngMean) * (p.Longitude - dLngMean);
+				dLatDev += (p.Latitude - dLatMean) * (p.Latitude - dLatMean);
+				dZDev += (p.Height - dZMean) * (p.Height - dZMean);
 			}
-			dLngDev = Math.Sqrt(dLngDev / LOCATION_SET_SIZE);
-			dLatDev = Math.Sqrt(dLatDev / LOCATION_SET_SIZE);
-			dZDev = Math.Sqrt(dZDev / LOCATION_SET_SIZE);
+			dLngDev = Math.Sqrt(dLngDev / count);
+			dLatDev = Math.Sqrt(dLatDev / count);
+			dZDev = Math.Sqrt(dZDev / count);
 
-			// Convert standard deviation to millimeters
-			const double MM_PER_DEGREE = 111_320_000.0;
-
-			Log.Note($"Last {LOCATION_SET_SIZE} : {dLatMean}° {dLngMean}° {dZMean:F4}m : {dLatDev * MM_PER_DEGREE:N0}mm {dLngDev * MM_PER_DEGREE:N0}mm {dZDev*1000:N0}mm");
-			_setIndex = 0;
-		}
-
-		/// <summary>
-		/// Log the mean locations
-		/// Called after the program finishes
-		/// </summary>
-		internal void LogMeanLocations()
-		{
-			if (_count == 0)
-				return;
-			Log.Note($"Location after {_count * LOCATION_SET_SIZE}");
-			Log.Note($"\tLatitude  {_dLatOrg + _dLatTotal / _count} ");
-			Log.Note($"\tLongitude {_dLngOrg + _dLngTotal / _count} ");
-			Log.Note($"\tHeight    {_dZOrg + _dZTotal / _count}m ");
+			return ($"Pnts:{count} Lat:{dLatMean}° Lng:{dLngMean}° Z:{dZMean:F4}m SD : {dLatDev * MM_PER_DEGREE:N0}mm {dLngDev * MM_PER_DEGREE:N0}mm {dZDev*1000:N0}mm");
 		}
 
 		/// <summary>

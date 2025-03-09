@@ -33,37 +33,7 @@ namespace WinRtkHost
 					return;
 				}
 
-				// Get the COM port
-				var portName = Settings.Default.ComPort;
-
-				// List serial ports
-				var ports = SerialPort.GetPortNames();
-				if (ports.Length == 0)
-				{
-					Log.Ln("ERROR : No COM ports found");
-					return;
-				}
-
-				Log.Ln("Available COM Ports:");
-				foreach (var p in ports)
-				{
-					if (p == portName)
-						Log.Ln("\t" + p + " (SELECTED)");
-					else
-						Log.Data("\t" + p);
-				}
-				if (portName.IsNullOrEmpty())
-				{
-					portName = ports[0];
-					Log.Ln($"No COM port specified (Using '{portName}')");
-				}
-				else if (!ports.Contains(portName))
-				{
-					portName = ports[0];
-					Log.Ln($"Selected '{portName}' port not found (Using '{portName}')");
-				}
-
-				SerialPort port = RestartSerialPort(portName);
+				var port = RestartSerialPort();
 
 				var lastStatus = DateTime.Now; // Slow status timer
 
@@ -73,11 +43,11 @@ namespace WinRtkHost
 					try
 					{
 						// Check the serial port is open
-						if (!port.IsOpen)
+						while (port is null || !port.IsOpen)
 						{
 							Log.Ln("Port closed");
 							System.Threading.Thread.Sleep(5_000);
-							port = RestartSerialPort(portName);
+							port = RestartSerialPort();
 						}
 
 						// Q to exit
@@ -114,18 +84,60 @@ namespace WinRtkHost
 		/// <summary>
 		/// Restablish the serial port comminications
 		/// </summary>
-		static SerialPort RestartSerialPort(string portName)
+		static SerialPort RestartSerialPort()
 		{
-			// Open serial port
-			var port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
-			port.Open();
-			Log.Ln($"Port {portName} opened");
+			// Get the COM port
+			var portName = Settings.Default.ComPort;
 
-			// Create the GPS parser
-			if (_gpsParser != null)
-				_gpsParser.Shutdown();
-			_gpsParser = new GpsParser(port);
-			return port;
+			// List serial ports
+			var portNames = SerialPort.GetPortNames();
+			if (portNames.Length == 0)
+			{
+				Log.Ln("ERROR : No COM ports found");
+				return null;
+			}
+
+			Log.Ln("Available COM Ports:");
+			foreach (var p in portNames)
+			{
+				if (p == portName)
+					Log.Ln("\t\t" + p + " (SELECTED)");
+				else
+					Log.Data("\t\t" + p);
+			}
+			if (portName.IsNullOrEmpty())
+			{
+				portName = portNames[0];
+				Log.Ln($" - No COM port specified (Using '{portName}')");
+			}
+			else if (!portNames.Contains(portName))
+			{
+				Log.Ln($" - Selected '{portName}' port not found");
+				return null;
+			}
+
+			// Open serial port
+			try
+			{
+				var port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
+				port.Open();
+				if (!port.IsOpen)
+				{
+					Log.Ln($" - FAILED to open '{portName}'");
+					return null;
+				}
+				Log.Ln($" - Port {portName} opened");
+
+				// Create the GPS parser
+				_gpsParser?.Shutdown();
+				_gpsParser = new GpsParser(port);
+				return port;
+			}
+			catch (Exception ex)
+			{
+				Log.Ln("E931: Error opening port " + ex.ToString());
+				return null;
+			}
 		}
 
 		/// <summary>

@@ -25,7 +25,6 @@ namespace WinRtkHost.Models.GPS
 		public GpsCommandQueue(SerialPort port)
 		{
 			// Handy for debugging blank system
-			//_strings.Add("FRESET");
 
 			_port = port;
 			if (Program.IsLC29H)
@@ -34,8 +33,12 @@ namespace WinRtkHost.Models.GPS
 			}
 			if (Program.IsUM980 || Program.IsUM982)
 			{
-				_strings.Add("VERSION");     // Used to determine device type
+				//_strings.Add("UNLOG");
+				_strings.Add("CONFIG");
+				_strings.Add("VERSION");     // Used to determine device type											
+				_strings.Add("GPGGA 1");
 			}
+			//_strings.Add("FRESET");
 		}
 
 		/// <summary>
@@ -62,7 +65,6 @@ namespace WinRtkHost.Models.GPS
 			if (Program.IsUM980 || Program.IsUM982)
 			{
 				// Setup RTCM V3
-				_strings.Add("GPGGA 1");     // Used to determine device type
 				_strings.Add("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
 				_strings.Add("RTCM1033 30"); // Receiver and antenna description
 				_strings.Add("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
@@ -74,7 +76,7 @@ namespace WinRtkHost.Models.GPS
 
 				var address = Settings.Default.BaseStationAddress;
 				if (address.IsNullOrEmpty())
-					_strings.Add("MODE BASE TIME 600 1");                             // Set base mode with 10 minute startup and 1m optimized save error
+					_strings.Add($"MODE BASE TIME {60*60} 0.01");                      // Set base mode with 6 hours startup and 1cm optimized save error
 				else
 					_strings.Add("MODE BASE " + Settings.Default.BaseStationAddress); // Set the precise coordinates of base station: latitude, longitude, height
 			}
@@ -158,7 +160,8 @@ namespace WinRtkHost.Models.GPS
 		/// <summary>
 		/// ASCII string checksum verification
 		/// </summary>
-		public bool VerifyChecksumLC29H(string str)
+		/// <param name="messageStartIndex">The index of the first character of the message UM980 includes $</param>
+		public bool VerifyNmeaChecksum(string str, int messageStartIndex)
 		{
 			int asteriskPos = str.LastIndexOf('*');
 			if (asteriskPos == -1 || asteriskPos + 3 > str.Length)
@@ -167,7 +170,7 @@ namespace WinRtkHost.Models.GPS
 				return false;
 			}
 
-			string data = str.Substring(1, asteriskPos - 1);
+			string data = str.Substring(messageStartIndex, asteriskPos - messageStartIndex);
 			string providedChecksumStr = str.Substring(asteriskPos + 1, 2);
 
 			if (!uint.TryParse(providedChecksumStr, System.Globalization.NumberStyles.HexNumber, null, out uint providedChecksum))
@@ -178,30 +181,6 @@ namespace WinRtkHost.Models.GPS
 
 			byte calculatedChecksum = CalculateChecksum(data);
 
-			return calculatedChecksum == (byte)providedChecksum;
-		}
-		bool VerifyChecksumUM98x(string str)
-		{
-			int asteriskPos = str.LastIndexOf('*');
-			if (asteriskPos == -1 || asteriskPos + 3 > str.Length)
-			{
-				Log.Ln($"ERROR : GPS Checksum error in {str}. Invalid format");
-				return false; // Invalid format
-			}
-
-			// Extract the data and the checksum
-			string data = str.Substring(0, asteriskPos);
-			string providedChecksumStr = str.Substring(asteriskPos + 1, 2);
-
-			// Convert the provided checksum from hex to an integer
-			if (!uint.TryParse(providedChecksumStr, System.Globalization.NumberStyles.HexNumber, null, out uint providedChecksum))
-			{
-				Log.Ln($"ERROR : GPS Checksum error in {str}. Invalid checksum");
-				return false;
-			}
-
-			// Calculate the checksum of the data
-			byte calculatedChecksum = CalculateChecksum(data);
 			return calculatedChecksum == (byte)providedChecksum;
 		}
 
@@ -232,7 +211,7 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		bool ProcessLC29H(string str)
 		{
-			if (!VerifyChecksumLC29H(str))
+			if (!VerifyNmeaChecksum(str, 1))
 			{
 				Log.Ln($"ERROR : GPS Checksum error in {str}");
 				return false;
@@ -298,7 +277,7 @@ namespace WinRtkHost.Models.GPS
 				return true;
 			}
 
-			if (!VerifyChecksumUM98x(str))
+			if (!VerifyNmeaChecksum(str, 0))
 			{
 				Log.Ln($"ERROR : GPS Checksum error in {str}");
 				return false;
