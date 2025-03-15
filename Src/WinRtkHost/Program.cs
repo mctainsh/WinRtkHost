@@ -14,6 +14,7 @@ namespace WinRtkHost
 		internal static bool IsLC29H => Settings.Default.GPSReceiverType == "LC29H";
 		internal static bool IsUM980 => Settings.Default.GPSReceiverType == "UM980";
 		internal static bool IsUM982 => Settings.Default.GPSReceiverType == "UM982";
+		internal static bool IsM20 => Settings.Default.GPSReceiverType == "M20";
 
 		/// <summary>
 		/// Main entry point
@@ -23,11 +24,12 @@ namespace WinRtkHost
 			try
 			{
 				Log.Ln($"Starting receiver {Settings.Default.GPSReceiverType}\r\n" +
+					$"\t M20 : {IsM20}\r\n" +
 					$"\t LC29H : {IsLC29H}\r\n" +
 					$"\t UM980 : {IsUM980}\r\n" +
 					$"\t UM982 : {IsUM982}");
 
-				if (!IsLC29H && !IsUM980 && !IsUM982)
+				if (!IsM20 && !IsLC29H && !IsUM980 && !IsUM982)
 				{
 					Log.Ln("Unknown receiver type");
 					return;

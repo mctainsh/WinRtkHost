@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="GPSReceiverType" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">UM980</Value>
+      <Value Profile="(Default)">UM982</Value>
     </Setting>
     <Setting Name="ComPort" Type="System.String" Scope="Application">
       <Value Profile="(Default)" />

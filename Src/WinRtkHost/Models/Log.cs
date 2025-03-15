@@ -5,9 +5,9 @@ namespace WinRtkHost.Models
 {
 	static class Log
 	{
-		static internal string LogFileName { private set; get; }
+		static internal string LogFileName { private set; get; } = string.Empty;
 		static DateTime _day;
-		static object _lock = new object();
+		static readonly object _lock = new object();
 
 		/// <summary>
 		/// Log the results to the console and to the log file
@@ -28,28 +28,23 @@ namespace WinRtkHost.Models
 				}
 			}
 		}
-		static void WriteLine(string data, bool console)
+		static void WriteLine(string data, bool console, bool showDatePrefix = true)
 		{
 			var now = DateTime.Now;
+			const string LogFolder = "RtkLogs";
+			if (LogFileName.IsNullOrEmpty())
+				Directory.CreateDirectory(LogFolder);
 			if (now.Day != _day.Day)
 			{
 				_day = now;
-				LogFileName = $"RtkLogs\\Log_{now:yyyyMMdd_HHmmss}.txt";
-				Directory.CreateDirectory("RtkLogs");
+				LogFileName = $"{LogFolder}\\Log_{now:yyyyMMdd_HHmmss}.txt";
 			}
-			Write(now.ToString("HH:mm:ss.fff") + " > "+ data + Environment.NewLine, console);
+			Write((showDatePrefix ? now.ToString("HH:mm:ss.fff") + " > " : string.Empty) +
+				data +
+				Environment.NewLine, console);
 		}
 		internal static void Ln(string data) => WriteLine(data, true);
 		internal static void Note(string data) => WriteLine(data, false);
-		internal static void Data(string data)
-		{
-			var now = DateTime.Now;
-			if (now.Day != _day.Day)
-			{
-				_day = now;
-				LogFileName = $"Log_{now:yyyyMMdd_HHmmss}.txt";
-			}
-			Write(now.ToString("HH:mm:ss.fff") + " > "+ data + Environment.NewLine, true);
-		}
+		internal static void Data(string data) => WriteLine(data, true, false);
 	}
 }

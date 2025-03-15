@@ -24,9 +24,12 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		public GpsCommandQueue(SerialPort port)
 		{
-			// Handy for debugging blank system
-
+			// Handy for debugging blank system (Query current state)
 			_port = port;
+			if (Program.IsM20)
+			{
+				_strings.Add("LOG LOGLIST");
+			}
 			if (Program.IsLC29H)
 			{
 				_strings.Add("PQTMVERNO");
@@ -55,6 +58,36 @@ namespace WinRtkHost.Models.GPS
 			}
 
 			Log.Ln("GPS Queue Start RTK Initialise Process");
+			if (Program.IsLC29H)
+			{
+				//_strings.Add("FRESET");
+				_strings.Add("UNLOGALL");
+				_strings.Add("RTKTYPE BASE");
+				_strings.Add("LOG RTCM1077 ONTIME 1");
+				_strings.Add("LOG RTCM1087 ONTIME 1");
+				_strings.Add("LOG RTCM1097 ONTIME 1");
+				_strings.Add("LOG RTCM1107 ONTIME 1");
+				_strings.Add("LOG RTCM1117 ONTIME 1");
+				_strings.Add("LOG RTCM1127 ONTIME 1");
+				_strings.Add("LOG RTCM1137 ONTIME 1");
+				_strings.Add("LOG RTCM1005 ONTIME 1");
+				_strings.Add("LOG RTCM1006 ONTIME 1");
+				_strings.Add("LOG RTCM1033 ONTIME 1");
+				_strings.Add("LOG RTCM1019 ONTIME 1");
+				_strings.Add("LOG RTCM1020 ONTIME 1");
+				_strings.Add("LOG RTCM1042 ONTIME 1");
+				_strings.Add("LOG RTCM1044 ONTIME 1");
+				_strings.Add("LOG RTCM1046 ONTIME 1");
+				_strings.Add("LOG RTCM1048 ONTIME 1");
+				_strings.Add("LOG RTCM1230 ONTIME 1");
+				_strings.Add("INTERFACEMODE COM1 AUTO AUTO");
+				_strings.Add("INTERFACEMODE COM3 AUTO AUTO");
+				_strings.Add("PPSCONTROL ENABLE POSITIVE 1 100000");
+				_strings.Add("FIX NONE");
+				//_strings.Add("SAVECONFIG");
+				//_strings.Add("REBOOT");
+				_strings.Add("LOG LOGLIST");
+			}
 			if (Program.IsLC29H)
 			{
 				_strings.Add("PQTMCFGSVIN,W,1,43200,0,0,0,0");
@@ -105,6 +138,10 @@ namespace WinRtkHost.Models.GPS
 			}
 
 			Log.Ln("GPS Queue Start ASCII Initialise Process");
+			if (Program.IsM20)
+			{
+				_strings.Add("LOG GPGGA ONTIME 1");
+			}
 			if (Program.IsLC29H)
 			{
 				// This should just work
@@ -196,7 +233,9 @@ namespace WinRtkHost.Models.GPS
 			if (str.StartsWith("$G"))
 				return false;
 
-			if (Program.IsLC29H)
+			if (Program.IsM20)
+				return ProcessM20(str);
+			else if (Program.IsLC29H)
 				return ProcessLC29H(str);
 			else if (Program.IsUM980 || Program.IsUM982)
 				return ProcessUM98x(str);
@@ -204,6 +243,25 @@ namespace WinRtkHost.Models.GPS
 				Log.Ln($"ERROR : Unknown GPS type {str}");
 
 			return true;
+		}
+
+		/// <summary>
+		/// Process M20 packet. A good response is
+		///		<OK or 	<LOGLIST
+		/// </summary>
+		private bool ProcessM20(string str)
+		{
+			if (str == "<OK" || str == "<LOGLIST")
+			{
+				_strings.RemoveAt(0);
+				if (!_strings.Any())
+					Log.Ln("GPS Startup Commands Complete");
+				SendTopCommand();
+				return true;
+			}
+
+			Log.Ln($"ERROR : M20 response {str}");
+			return false;
 		}
 
 		/// <summary>

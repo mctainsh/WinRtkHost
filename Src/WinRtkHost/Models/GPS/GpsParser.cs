@@ -246,11 +246,13 @@ namespace WinRtkHost.Models.GPS
 						// Expect start of ASCII packet
 						case (byte)'$':
 						case (byte)'#':
+						case (byte)'<':     // Added for M20
 							DumpSkippedBytes();
 							_binaryIndex = 1;
 							_byteArray[0] = ch;
 							_buildState = BuildState.BuildStateAscii;
 							return true;
+
 						// Start of RTK binary packet
 						case 0xD3:
 							DumpSkippedBytes();
@@ -472,6 +474,10 @@ namespace WinRtkHost.Models.GPS
 			return true;
 		}
 
+		/// <summary>
+		/// Process the ASCII line of data
+		/// </summary>
+		/// <param name="line"></param>
 		void ProcessAsciiLine(string line)
 		{
 			if (line.Length < 1)
@@ -483,6 +489,7 @@ namespace WinRtkHost.Models.GPS
 			_timeOfLastAsciiMessage = DateTime.Now;
 			_totalAsciiPackets++;
 
+			// TODO : DO I need to accept GPGGA for M20
 			if (line.StartsWith("$GNGGA"))
 			{
 				//Log.Note($"GPS <- '{line}'");
