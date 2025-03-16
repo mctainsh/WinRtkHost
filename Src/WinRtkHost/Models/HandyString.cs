@@ -29,17 +29,17 @@ namespace WinRtkHost.Models
 			if (len == 0)
 				return string.Empty;
 
-			StringBuilder lines = new StringBuilder();
-			const int SIZE = 65;
+			var lines = new StringBuilder();
+			const int SIZE = 66;
 			var szText = new char[SIZE + 1];
 			for (int n = 0; n < len; n++)
 			{
 				int index = n % 16;
 				if (index == 0)
 				{
-					szText[SIZE - 1] = '\0';
+					szText[SIZE-1] = '\0';
 					if (n > 0)
-						lines.Append(new string(szText) + "\r\n");
+						lines.Append(new string(szText).Trim('\0') + "\r\n");
 
 					// Fill the szText with spaces
 					for (int i = 0; i < SIZE; i++)
@@ -54,8 +54,8 @@ namespace WinRtkHost.Models
 				szText[offset + 2] = ' ';
 				szText[3 * 16 + 1 + index] = data[n] < 0x20 ? '·' : (char)data[n];
 			}
-			szText[SIZE - 1] = '\0';
-			lines.Append(new string(szText));
+			szText[SIZE-1] = '\0';
+			lines.Append(new string(szText).Trim('\0'));
 			return ("\r\n" + lines.ToString()).Indent(2);
 		}
 

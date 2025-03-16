@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace WinRtkHost.Models.GPS
 {
@@ -23,64 +24,71 @@ namespace WinRtkHost.Models.GPS
 		/// <param name="line">GGA line</param>
 		public void ProcessGGALocation(string line)
 		{
-			var parts = line.Split(',');
-			if (parts.Length < 14)
+			try
 			{
-				Log.Ln($"\tPacket length too short {parts.Length} {line}");
-				return;
+				var parts = line.Split(',');
+				if (parts.Length < 14)
+				{
+					Log.Ln($"\tPacket length too short {parts.Length} {line}");
+					return;
+				}
+
+				// Read time
+				//string time = parts[1];
+				//if (time.Length > 7)
+				//{
+				//	time = time.Insert(4, ":").Insert(2, ":").Substring(0, 8);
+				//}
+
+				// Read GPS Quality
+				string quality = parts[6];
+				int nQuality = 0;
+				if (quality.Length > 0)
+					nQuality = int.Parse(quality);
+
+				// Location
+				double lat = ParseLatLong(parts[2], 2, parts[3] == "S");
+				double lng = ParseLatLong(parts[4], 3, parts[5] == "E");
+
+				// Height
+				if (!double.TryParse(parts[9], NumberStyles.Any, CultureInfo.InvariantCulture, out double height))
+					height = -1;
+
+				// Satellite count
+				//string satellites = parts[7];
+				//int sat = 0;
+				//if (satellites.Length > 0)
+				//{
+				//	sat = int.Parse(satellites);
+				//}
+
+				// Skip if we have no data
+				if (lng == 0.0 || lat == 0.0 || nQuality < 1)
+				{
+					Log.Ln($"No location data in {line}");
+					return;
+				}
+
+				// We have a good result
+				Log.Note(line);
+
+				//_gpsConnected = true;
+
+				//Log.Note($"H:{height} #{satellites} Q:{quality}");
+
+				// Don't average fixed locations
+				if (7 != nQuality)
+					_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
+
+				// Truncate the list to last 48 hours
+				const int MAX_POINTS = 48 * 60 * 60;
+				while (_points.Count > MAX_POINTS)
+					_points.RemoveAt(0);
 			}
-
-			// Read time
-			//string time = parts[1];
-			//if (time.Length > 7)
-			//{
-			//	time = time.Insert(4, ":").Insert(2, ":").Substring(0, 8);
-			//}
-
-			// Read GPS Quality
-			string quality = parts[6];
-			int nQuality = 0;
-			if (quality.Length > 0)
-				nQuality = int.Parse(quality);
-
-			// Location
-			double lat = ParseLatLong(parts[2], 2, parts[3] == "S");
-			double lng = ParseLatLong(parts[4], 3, parts[5] == "E");
-
-			// Height
-			if (!double.TryParse(parts[9], out double height))
-				height = -1;
-
-			// Satellite count
-			//string satellites = parts[7];
-			//int sat = 0;
-			//if (satellites.Length > 0)
-			//{
-			//	sat = int.Parse(satellites);
-			//}
-
-			// Skip if we have no data
-			if (lng == 0.0 || lat == 0.0 || nQuality < 1)
+			catch (Exception ex)
 			{
-				Log.Ln($"No location data in {line}");
-				return;
+				Log.Ln($"E408:'{line}'" + ex.ToString());
 			}
-
-			// We have a good result
-			Log.Note(line);
-
-			//_gpsConnected = true;
-
-			//Log.Note($"H:{height} #{satellites} Q:{quality}");
-
-			// Don't average fixed locations
-			if (7 != nQuality)
-				_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
-
-			// Truncate the list to last 48 hours
-			const int MAX_POINTS = 48 * 60 * 60;
-			while (_points.Count > MAX_POINTS)
-				_points.RemoveAt(0);
 		}
 
 		/// <summary>
@@ -128,11 +136,11 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		double ParseLatLong(string text, int degreeDigits, bool isNegative)
 		{
-			if (text.Length < degreeDigits)
+			if (text.Length < degreeDigits + 2)
 				return 0.0;
 			string degree = text.Substring(0, degreeDigits);
 			string minutes = text.Substring(degreeDigits);
-			double value = double.Parse(degree) + double.Parse(minutes) / 60.0;
+			double value = double.Parse(degree, CultureInfo.InvariantCulture) + double.Parse(minutes, CultureInfo.InvariantCulture) / 60.0;
 			return isNegative ? value * -1 : value;
 		}
 	}

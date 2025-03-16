@@ -11,10 +11,10 @@ namespace WinRtkHost
 	{
 		static GpsParser _gpsParser;
 
-		internal static bool IsLC29H => Settings.Default.GPSReceiverType == "LC29H";
-		internal static bool IsUM980 => Settings.Default.GPSReceiverType == "UM980";
-		internal static bool IsUM982 => Settings.Default.GPSReceiverType == "UM982";
-		internal static bool IsM20 => Settings.Default.GPSReceiverType == "M20";
+		internal static bool IsLC29H { private set; get; }
+		internal static bool IsUM980 { private set; get; }
+		internal static bool IsUM982 { private set; get; }
+		internal static bool IsM20 { private set; get; }
 
 		/// <summary>
 		/// Main entry point
@@ -23,11 +23,16 @@ namespace WinRtkHost
 		{
 			try
 			{
+				IsLC29H = Settings.Default.GPSReceiverType == "LC29H";
+				IsUM980 = Settings.Default.GPSReceiverType == "UM980";
+				IsUM982 = Settings.Default.GPSReceiverType == "UM982";
+				IsM20 = Settings.Default.GPSReceiverType == "M20";
+
 				Log.Ln($"Starting receiver {Settings.Default.GPSReceiverType}\r\n" +
-					$"\t M20 : {IsM20}\r\n" +
-					$"\t LC29H : {IsLC29H}\r\n" +
-					$"\t UM980 : {IsUM980}\r\n" +
-					$"\t UM982 : {IsUM982}");
+							$"\t M20   : {IsM20}\r\n" +
+							$"\t LC29H : {IsLC29H}\r\n" +
+							$"\t UM980 : {IsUM980}\r\n" +
+							$"\t UM982 : {IsUM982}");
 
 				if (!IsM20 && !IsLC29H && !IsUM980 && !IsUM982)
 				{
@@ -121,7 +126,9 @@ namespace WinRtkHost
 			// Open serial port
 			try
 			{
-				var port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
+				var port = new SerialPort(portName,
+					IsM20 ? 9600 : 115200,
+					Parity.None, 8, StopBits.One);
 				port.Open();
 				if (!port.IsOpen)
 				{
