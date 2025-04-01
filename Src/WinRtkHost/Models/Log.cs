@@ -34,7 +34,7 @@ namespace WinRtkHost.Models
 			const string LogFolder = "RtkLogs";
 			if (LogFileName.IsNullOrEmpty())
 				Directory.CreateDirectory(LogFolder);
-			if (now.Day != _day.Day)
+			if (now.Date != _day.Date)
 			{
 				_day = now;
 				LogFileName = $"{LogFolder}\\Log_{now:yyyyMMdd_HHmmss}.txt";

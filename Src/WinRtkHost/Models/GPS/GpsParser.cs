@@ -321,7 +321,7 @@ namespace WinRtkHost.Models.GPS
 		{
 			_byteArray[_binaryIndex++] = ch;
 
-			// Checl for text messages
+			// Check for text messages
 			if (_binaryIndex == 3)
 			{
 				uint lengthPrefix = GetUInt(8, 14 - 8);
@@ -385,8 +385,8 @@ namespace WinRtkHost.Models.GPS
 					else
 						_msgTypeTotals.Add((int)type, 1);
 				}
-				//Log.Ln($"GOOD {type}[{_binaryIndex}]");
-				Console.Write($"\r{type}[{_binaryIndex}]    \r");
+				Log.Ln($"GOOD {type}[{_binaryIndex}]");
+				//Console.Write($"\r{type}[{_binaryIndex}]    \r");
 
 				// Send to NTRIP casters (Actually just queue)
 				var sendData = new byte[_binaryLength];

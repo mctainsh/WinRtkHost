@@ -127,7 +127,7 @@ namespace WinRtkHost
 			try
 			{
 				var port = new SerialPort(portName,
-					IsM20 ? 9600 : 115200,
+					115200,
 					Parity.None, 8, StopBits.One);
 				port.Open();
 				if (!port.IsOpen)

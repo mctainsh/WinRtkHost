@@ -58,7 +58,7 @@ namespace WinRtkHost.Models.GPS
 			}
 
 			Log.Ln("GPS Queue Start RTK Initialise Process");
-			if (Program.IsLC29H)
+			if (Program.IsM20)
 			{
 				//_strings.Add("FRESET");
 				_strings.Add("UNLOGALL");
