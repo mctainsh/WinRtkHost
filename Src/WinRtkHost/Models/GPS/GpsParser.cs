@@ -13,7 +13,6 @@ namespace WinRtkHost.Models.GPS
 {
 	public class GpsParser
 	{
-		const bool VERBOSE = true;
 		const int MAX_BUFF = 2560;
 
 		/// <summary>
@@ -169,6 +168,9 @@ namespace WinRtkHost.Models.GPS
 				var data = new byte[bytes];
 				port.Read(data, 0, bytes);
 
+				// Raw log
+				//"C:\\Temp\\RawM20.bin".AppendBytesToFile(data);
+
 				// Process the data
 				ProcessStream(data);
 			}
@@ -222,7 +224,6 @@ namespace WinRtkHost.Models.GPS
 					}
 				}
 				_binaryIndex = 0;
-
 #if VERBOSE_SHIFT
 				Log.Ln($"OUT DATA {n} : {HexDump(pData, dataSize)}");
 #endif
@@ -247,6 +248,7 @@ namespace WinRtkHost.Models.GPS
 						case (byte)'$':
 						case (byte)'#':
 						case (byte)'<':     // Added for M20
+						case (byte)'[':     // Added for M20 Reboot
 							DumpSkippedBytes();
 							_binaryIndex = 1;
 							_byteArray[0] = ch;
@@ -294,7 +296,7 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		void DumpSkippedBytes()
 		{
-			if (VERBOSE && _skippedIndex > 0)
+			if (_skippedIndex > 0)
 			{
 				Log.Ln($"Skipped {_skippedIndex} : {_skippedArray.HexAsciDumpDetail(_skippedIndex)}");
 				_skippedIndex = 0;
@@ -337,9 +339,11 @@ namespace WinRtkHost.Models.GPS
 				}
 			}
 
-			if (_binaryIndex < 12)
+			// Dont process if not big enough to hold prefix, length and checksum
+			if (_binaryIndex < 5)
 				return true;
 
+			// Verify size (First time only)
 			if (_binaryLength == 0 && _binaryIndex >= 4)
 			{
 				_binaryLength = (int)(GetUInt(14, 10) + 6);
@@ -350,52 +354,70 @@ namespace WinRtkHost.Models.GPS
 				}
 				return true;
 			}
+
+			// Check for overflow
 			if (_binaryIndex >= MAX_BUFF)
 			{
 				Log.Ln($"Buffer overflow {_binaryIndex}");
 				return false;
 			}
 
+			// Have we reached the end of the packet
 			if (_binaryIndex >= _binaryLength)
+				return ProcessRtkPacket();
+
+			// Continue porocessing packets
+			return true;
+		}
+
+		/// <summary>
+		/// We have a complete packet. Parse out the fields and forward on to interested parties
+		/// </summary>
+		/// <returns>True if packet processed OK</returns>
+		private bool ProcessRtkPacket()
+		{
+			uint parity = GetUInt((_binaryLength - 3) * 8, 24);
+			uint calculated = Crc24.RtkCrc24(_byteArray, _binaryLength);
+			uint type = GetUInt(24, 12);
+			if (parity != calculated)
 			{
-				uint parity = GetUInt((_binaryLength - 3) * 8, 24);
-				uint calculated = Crc24.RtkCrc24( _byteArray, _binaryLength);
-				uint type = GetUInt(24, 12);
-				if (parity != calculated)
-				{
-					Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryIndex}] {_byteArray.HexAsciDump(_binaryIndex)}");
-					return false;
-				}
-
-				_gpsConnected = true;
-				_timeOfLastRtkMessage = DateTime.Now;
-
-				if (_missedBytesDuringError > 0)
-				{
-					_readErrorCount++;
-					Log.Ln($" >> E: {_readErrorCount} - Skipped {_missedBytesDuringError}");
-					_missedBytesDuringError = 0;
-				}
-
-				// Update the totals counts
-				lock (_msgTypeTotals)
-				{
-					if (_msgTypeTotals.ContainsKey((int)type))
-						_msgTypeTotals[(int)type]++;
-					else
-						_msgTypeTotals.Add((int)type, 1);
-				}
-				Log.Ln($"GOOD {type}[{_binaryIndex}]");
-				//Console.Write($"\r{type}[{_binaryIndex}]    \r");
-
-				// Send to NTRIP casters (Actually just queue)
-				var sendData = new byte[_binaryLength];
-				Array.Copy(_byteArray, sendData, _binaryLength);
-				foreach (var _caster in NtripCasters)
-					_caster.Send(sendData);
-
-				_buildState = BuildState.BuildStateNone;
+				Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryIndex}] {_byteArray.HexAsciDump(_binaryIndex)}");
+				return false;
 			}
+
+			_gpsConnected = true;
+			_timeOfLastRtkMessage = DateTime.Now;
+
+			if (_missedBytesDuringError > 0)
+			{
+				_readErrorCount++;
+				Log.Ln($" >> E: {_readErrorCount} - Skipped {_missedBytesDuringError}");
+				_missedBytesDuringError = 0;
+			}
+
+			// Update the totals counts
+			lock (_msgTypeTotals)
+			{
+				if (_msgTypeTotals.ContainsKey((int)type))
+					_msgTypeTotals[(int)type]++;
+				else
+					_msgTypeTotals.Add((int)type, 1);
+			}
+
+			Log.Ln($"GOOD {type}[{_binaryIndex}]");
+			//Console.Write($"\r{type}[{_binaryIndex}]    \r");
+
+			// Send to NTRIP casters (Actually just queue)
+			var sendData = new byte[_binaryLength];
+			Array.Copy(_byteArray, sendData, _binaryLength);
+
+			//new RtcmParser(type, sendData);
+
+			// Post to the queues
+			foreach (var _caster in NtripCasters)
+				_caster.Send(sendData);
+
+			_buildState = BuildState.BuildStateNone;
 			return true;
 		}
 
@@ -416,7 +438,7 @@ namespace WinRtkHost.Models.GPS
 				else
 				{
 					_byteArray[_binaryIndex] = 0;
-					Log.Ln("RTK <- " + Encoding.ASCII.GetString(_byteArray, 2, _binaryIndex-2));
+					Log.Ln("RTK <- " + Encoding.ASCII.GetString(_byteArray, 2, _binaryIndex - 2));
 				}
 				_buildState = BuildState.BuildStateNone;
 				return true;
@@ -477,7 +499,6 @@ namespace WinRtkHost.Models.GPS
 		/// <summary>
 		/// Process the ASCII line of data
 		/// </summary>
-		/// <param name="line"></param>
 		void ProcessAsciiLine(string line)
 		{
 			if (line.Length < 1)
@@ -489,15 +510,21 @@ namespace WinRtkHost.Models.GPS
 			_timeOfLastAsciiMessage = DateTime.Now;
 			_totalAsciiPackets++;
 
-			// TODO : DO I need to accept GPGGA for M20
-			if (line.StartsWith("$GNGGA"))
+			// TODO : Do I need to accept GPGGA for M20
+			if (line.StartsWith("$GNGGA") || (Program.IsM20 && line.StartsWith("$GPGGA")))
 			{
 				//Log.Note($"GPS <- '{line}'");
 				_locationAverage.ProcessGGALocation(line);
 			}
 			else if (line.StartsWith("$G"))
 			{
-				//Log.Note($"GPS <- '{line}'");
+				Log.Note($"GPS <- '{line}'");
+			}
+			else if (Program.IsM20 && (line.StartsWith("<    ") || line.Contains("System will reboot in") || line.StartsWith("#BEST")))
+			{
+				//M20 Result
+				Log.Ln($"M20 '{line}'");
+				return;
 			}
 			else
 			{

@@ -23,12 +23,16 @@ namespace WinRtkHost
 		{
 			try
 			{
-				IsLC29H = Settings.Default.GPSReceiverType == "LC29H";
-				IsUM980 = Settings.Default.GPSReceiverType == "UM980";
-				IsUM982 = Settings.Default.GPSReceiverType == "UM982";
-				IsM20 = Settings.Default.GPSReceiverType == "M20";
+				// Setup logging
+				var s = Settings.Default;
+				Log.Setup(s.LogFolder, s.LogDaysToKeep);
 
-				Log.Ln($"Starting receiver {Settings.Default.GPSReceiverType}\r\n" +
+				IsLC29H = s.GPSReceiverType == "LC29H";
+				IsUM980 = s.GPSReceiverType == "UM980";
+				IsUM982 = s.GPSReceiverType == "UM982";
+				IsM20 = s.GPSReceiverType == "M20";
+
+				Log.Ln($"Starting receiver '{s.GPSReceiverType}'\r\n" +
 							$"\t M20   : {IsM20}\r\n" +
 							$"\t LC29H : {IsLC29H}\r\n" +
 							$"\t UM980 : {IsUM980}\r\n" +

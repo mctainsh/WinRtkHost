@@ -44,10 +44,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\GPS\Crc24.cs" />
+    <Compile Include="Models\GPS\EcefToWgs84Converter.cs" />
     <Compile Include="Models\GPS\GpsCommandQueue.cs" />
     <Compile Include="Models\GPS\GpsParser.cs" />
     <Compile Include="Models\GPS\LocationAverage.cs" />
     <Compile Include="Models\GPS\GeoPoint.cs" />
+    <Compile Include="Models\GPS\RtcmParser.cs" />
     <Compile Include="Models\HandyString.cs" />
     <Compile Include="Models\Log.cs" />
     <Compile Include="Models\NTRIPServer.cs" />

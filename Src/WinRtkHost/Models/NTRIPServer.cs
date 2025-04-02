@@ -199,7 +199,7 @@ namespace WinRtkHost.Models
 			try
 			{
 				// Keep a history of send timers
-				var sent = _client.Send(pBytes,length, SocketFlags.None);
+				var sent = _client.Send(pBytes, length, SocketFlags.None);
 				if (sent != length)
 					throw new Exception($"Incomplete send {length} != {sent}");
 
@@ -216,7 +216,7 @@ namespace WinRtkHost.Models
 				{
 					lock (_sendMicroSeconds)
 					{
-						_sendMicroSeconds.Add(length*8.0/time);
+						_sendMicroSeconds.Add(length * 8.0 / time);
 					}
 				}
 				_wifiConnectTime = DateTime.Now;
@@ -299,7 +299,7 @@ namespace WinRtkHost.Models
 			// Record the attempt
 			_reconnectAttempt++;
 			if (_reconnectAttempt >= SOCKET_RETRY_INTERVALS_S.Length)
-				_reconnectAttempt = SOCKET_RETRY_INTERVALS_S.Length-1;
+				_reconnectAttempt = SOCKET_RETRY_INTERVALS_S.Length - 1;
 
 
 			Log.Ln($"RTK Connecting to {_sAddress} : {_port}. Try:{_reconnectAttempt}");
@@ -349,6 +349,8 @@ namespace WinRtkHost.Models
 		{
 			lock (_outboundQueue)
 			{
+				while (_outboundQueue.Count > 64)
+					_outboundQueue.RemoveAt(0);
 				_outboundQueue.Add(byteArray);
 			}
 		}

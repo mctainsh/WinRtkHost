@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.IO;
+using System;
+using System.Text;
 
 namespace WinRtkHost.Models
 {
@@ -37,7 +39,7 @@ namespace WinRtkHost.Models
 				int index = n % 16;
 				if (index == 0)
 				{
-					szText[SIZE-1] = '\0';
+					szText[SIZE - 1] = '\0';
 					if (n > 0)
 						lines.Append(new string(szText).Trim('\0') + "\r\n");
 
@@ -54,7 +56,7 @@ namespace WinRtkHost.Models
 				szText[offset + 2] = ' ';
 				szText[3 * 16 + 1 + index] = data[n] < 0x20 ? '·' : (char)data[n];
 			}
-			szText[SIZE-1] = '\0';
+			szText[SIZE - 1] = '\0';
 			lines.Append(new string(szText).Trim('\0'));
 			return ("\r\n" + lines.ToString()).Indent(2);
 		}
@@ -95,5 +97,35 @@ namespace WinRtkHost.Models
 		}
 
 		internal static bool IsNullOrEmpty(this string str) => string.IsNullOrEmpty(str);
+
+		/// <summary>
+		/// Add bytes to file or create new file
+		/// </summary>
+		public static void AppendBytesToFile(this string filePath, byte[] data)
+		{
+			try
+			{
+				// Check if file exists; if not, create it
+				if (!File.Exists(filePath))
+				{
+					using (FileStream fs = File.Create(filePath))
+					{
+						fs.Write(data, 0, data.Length);
+					}
+				}
+				else
+				{
+					// Append the bytes to the existing file
+					using (FileStream fs = new FileStream(filePath, FileMode.Append, FileAccess.Write))
+					{
+						fs.Write(data, 0, data.Length);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Ln($"ERROR : An error occurred: {ex.Message}");
+			}
+		}
 	}
 }

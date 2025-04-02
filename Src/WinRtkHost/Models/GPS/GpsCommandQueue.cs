@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Xml.Schema;
 using WinRtkHost.Properties;
 
 namespace WinRtkHost.Models.GPS
@@ -28,6 +29,9 @@ namespace WinRtkHost.Models.GPS
 			_port = port;
 			if (Program.IsM20)
 			{
+				//_strings.Add("UNLOGALL");		// Only do this for testing
+				//_strings.Add("FRESET");		// ..
+				_strings.Add("LOG COMCONFIG");
 				_strings.Add("LOG LOGLIST");
 			}
 			if (Program.IsLC29H)
@@ -49,7 +53,6 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		public void StartRtkInitialiseProcess()
 		{
-
 			// Don't do it if data in the queue
 			if (_strings.Any())
 			{
@@ -60,8 +63,11 @@ namespace WinRtkHost.Models.GPS
 			Log.Ln("GPS Queue Start RTK Initialise Process");
 			if (Program.IsM20)
 			{
-				//_strings.Add("FRESET");
-				_strings.Add("UNLOGALL");
+				_strings.Add("LOG LOGLIST");            // Record current state
+				_strings.Add("FRESET");					// This resets out everything
+				_strings.Add("LOG LOGLIST");			// Record default setting
+				_strings.Add("UNLOGALL");				// Stop logging to clean up log
+				_strings.Add("LOG LOGLIST");			// Record cleared default
 				_strings.Add("RTKTYPE BASE");
 				_strings.Add("LOG RTCM1077 ONTIME 1");
 				_strings.Add("LOG RTCM1087 ONTIME 1");
@@ -80,12 +86,13 @@ namespace WinRtkHost.Models.GPS
 				_strings.Add("LOG RTCM1046 ONTIME 1");
 				_strings.Add("LOG RTCM1048 ONTIME 1");
 				_strings.Add("LOG RTCM1230 ONTIME 1");
+				_strings.Add("LOG GPGGA ONTIME 1");
 				_strings.Add("INTERFACEMODE COM1 AUTO AUTO");
 				_strings.Add("INTERFACEMODE COM3 AUTO AUTO");
 				_strings.Add("PPSCONTROL ENABLE POSITIVE 1 100000");
 				_strings.Add("FIX NONE");
-				//_strings.Add("SAVECONFIG");
-				//_strings.Add("REBOOT");
+				_strings.Add("SAVECONFIG");					// Save for later
+				_strings.Add("REBOOT");
 				_strings.Add("LOG LOGLIST");
 			}
 			if (Program.IsLC29H)
@@ -109,7 +116,7 @@ namespace WinRtkHost.Models.GPS
 
 				var address = Settings.Default.BaseStationAddress;
 				if (address.IsNullOrEmpty())
-					_strings.Add($"MODE BASE TIME {60*60} 0.01");                      // Set base mode with 6 hours startup and 1cm optimized save error
+					_strings.Add($"MODE BASE TIME {60 * 60} 0.01");                      // Set base mode with 6 hours startup and 1cm optimized save error
 				else
 					_strings.Add("MODE BASE " + Settings.Default.BaseStationAddress); // Set the precise coordinates of base station: latitude, longitude, height
 			}
@@ -251,17 +258,48 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		private bool ProcessM20(string str)
 		{
-			if (str == "<OK" || str == "<LOGLIST")
+			// Pre Ack message '[COM1]'
+			if (str.StartsWith("[COM") && str.EndsWith("]"))
+				return false;
+
+			// Log list message
+			if (str.StartsWith("<LOGLIST COM"))
+				return false;
+
+			// Normal ACK
+			if (str == "<OK")
 			{
-				_strings.RemoveAt(0);
-				if (!_strings.Any())
-					Log.Ln("GPS Startup Commands Complete");
-				SendTopCommand();
+				AcknowledgedQueueItem();
+				return true;
+			}
+
+			// Response for FRESET
+			if (str.Contains("Reboot Cause: FRESET") && _strings.FirstOrDefault()?.Contains("FRESET") == true)
+			{
+				AcknowledgedQueueItem();
+				return true;
+			}
+
+			// Manual reboot
+			if (str.Contains("Reboot Cause: MANUAL REBOOT") && _strings.FirstOrDefault()?.Contains("REBOOT") == true)
+			{
+				AcknowledgedQueueItem();
 				return true;
 			}
 
 			Log.Ln($"ERROR : M20 response {str}");
 			return false;
+		}
+
+		/// <summary>
+		/// Item in the queue has been acklnowledged
+		/// </summary>
+		private void AcknowledgedQueueItem()
+		{
+			_strings.RemoveAt(0);
+			if (!_strings.Any())
+				Log.Ln("GPS Startup Commands Complete");
+			SendTopCommand();
 		}
 
 		/// <summary>
