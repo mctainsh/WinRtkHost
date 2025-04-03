@@ -74,7 +74,7 @@ namespace WinRtkHost
 						if ((DateTime.Now - lastStatus).TotalSeconds > 60)
 						{
 							lastStatus = DateTime.Now;
-							LogStatus(_gpsParser);
+							_gpsParser.LogStatus();
 						}
 					}
 					catch (Exception ex)
@@ -148,20 +148,9 @@ namespace WinRtkHost
 			}
 			catch (Exception ex)
 			{
-				Log.Ln("E931: Error opening port " + ex.ToString());
+				Log.Ln("E931: Error opening port " + ex.Message);
 				return null;
 			}
-		}
-
-		/// <summary>
-		/// Log the current system status
-		/// </summary>
-		private static void LogStatus(GpsParser gpsParser)
-		{
-			Log.Note($"=============================================");
-			foreach (var s in gpsParser.NtripCasters)
-				Log.Note(s.ToString());
-			Log.Note(_gpsParser.ToString());
 		}
 	}
 }

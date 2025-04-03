@@ -1,4 +1,0 @@
-servers.onocoy.com
-2101
-YourMountPointName
-YourPassword

@@ -1,14 +1,113 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WinRtkHost.Models.GPS
 {
 	internal class RtcmParser
 	{
-		readonly byte[] _data;
+		/// <summary>
+		/// Dictionary of the RTK packets we have received
+		/// </summary>
+		readonly Dictionary<int, int> _msgTypeTotals = new Dictionary<int, int>();
+
+		/// <summary>
+		/// List of socket connection to NTRIP casters we are pusing RTK data to
+		/// </summary>
+		internal List<NTRIPServer> NtripCasters { get; } = new List<NTRIPServer>();
+		
+		/// <summary>
+		/// Current complete packet we are working on
+		/// </summary>
+		byte[] _data;
+
+		/// <summary>
+		/// Load config data for casters at startup
+		/// </summary>
+		internal RtcmParser()
+		{
+			// Load NTRIP casters
+			for (int index = 0; index < 1000; index++)
+			{
+				var caster = new NTRIPServer();
+				if (!caster.LoadSettings(index))
+					break;
+				NtripCasters.Add(caster);
+			}
+		}
+
+		/// <summary>
+		/// We have a complete packet. Parse out the fields and forward on to interested parties
+		/// </summary>
+		/// <returns>True if packet processed OK. False indicates we have bad data and need to dump this packet</returns>
+		internal bool ProcessRtkPacket( byte [] _byteArray, int _binaryLength)
+		{
+			// Send to NTRIP casters (Actually just queue)
+			_data = new byte[_binaryLength];
+			Array.Copy(_byteArray, _data, _binaryLength);
+
+			uint parity = GetUInt((_binaryLength - 3) * 8, 24);
+			uint calculated = Crc24.RtkCrc24(_byteArray, _binaryLength);
+			uint type = GetUInt(24, 12);
+			if (parity != calculated)
+			{
+				Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryLength}] {_byteArray.HexAsciDump(_binaryLength)}");
+				return false;
+			}
+
+			// Update the totals counts
+			lock (_msgTypeTotals)
+			{
+				if (_msgTypeTotals.ContainsKey((int)type))
+					_msgTypeTotals[(int)type]++;
+				else
+					_msgTypeTotals.Add((int)type, 1);
+			}
+
+			Log.Ln($"GOOD {type}[{_binaryLength}]");
+			//Console.Write($"\r{type}[{_binaryIndex}]    \r");
+
+			// Post to the queues
+			foreach (var _caster in NtripCasters)
+				_caster.Send(_data);
+
+
+			//new RtcmParser(type, sendData);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Show the message counts
+		/// </summary>
+		internal string GetMessageTypeCounts()
+		{
+			string counts = "";
+			lock (_msgTypeTotals)
+			{
+				foreach (var item in _msgTypeTotals)
+					counts += $"\t{item.Key} : {item.Value:N0}{GpsParser.NL}";
+			}
+			return counts;
+		}
+
+		/// <summary>
+		/// Log the current system status
+		/// </summary>
+		internal void LogStatus()
+		{
+			foreach (var s in NtripCasters)
+				Log.Note(s.ToString());
+		}
+
+		/// <summary>
+		/// Kill off all the servers
+		/// </summary>
+		internal void Shutdown()
+		{
+			foreach (var _caster in NtripCasters)
+				_caster.Shutdown();
+		}
+
 		internal RtcmParser(uint type, byte[] sendData)
 		{
 			_data = sendData;
@@ -96,9 +195,10 @@ TOTAL 152
 			return bits;
 		}
 
+		UInt32 GetUInt(int pos, int len) => GetUInt(ref pos, len);
 		UInt32 GetUInt(ref int pos, int len)
 		{
-			if (((pos + len) / 8) >= _data.Length)
+			if (((pos + len) / 8) > _data.Length)
 			{
 				Console.WriteLine("Overflow!!!!!!!");
 				return 0;

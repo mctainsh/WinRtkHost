@@ -1,4 +1,0 @@
-ntrip.rtkdirect.com
-2101
-YourMountPointName
-YourPassword

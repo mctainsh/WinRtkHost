@@ -1,4 +1,0 @@
-rtk2go.com
-2101
-YourMountPointName
-YourPassword

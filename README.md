@@ -96,7 +96,7 @@ WARNING :  Do not run without real credentials or your IP may be blocked!!
 
 ### Setup & Installation
 
-1. **Download the files** : [Everything from Code button](https://github.com/mctainsh/WinRtkHost/tree/main) or just [Download only the application](https://github.com/mctainsh/WinRtkHost/tree/540277185d19ed3b363d4e9723451ba20e1afddc/ConsoleApp). 
+1. **Download the files** : [Everything from Code button](https://github.com/mctainsh/WinRtkHost/tree/main) or just [Download only the application](https://1drv.ms/f/s!Avrf6GYUWqyFhtRJyiwprtYICXZggA?e=t5P3NM). 
 
 2. **Place in folder** : Put the ConsoleApp files in a folder
 

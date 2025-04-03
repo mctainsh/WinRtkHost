@@ -15,6 +15,11 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		const double MM_PER_DEGREE = 111_320_000.0;
 
+		/// <summary>
+		/// 2 days to stablise the location
+		/// </summary>
+		const int MAX_POINTS = 48 * 60 * 60;
+
 		// Set totals
 		readonly List<GeoPoint> _points = new List<GeoPoint>();
 
@@ -76,14 +81,13 @@ namespace WinRtkHost.Models.GPS
 
 				//Log.Note($"H:{height} #{satellites} Q:{quality}");
 
+				// Truncate the list
+				while (_points.Count > MAX_POINTS)
+					_points.RemoveAt(0);
+
 				// Don't average fixed locations
 				if (7 != nQuality)
 					_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
-
-				// Truncate the list to last 48 hours
-				const int MAX_POINTS = 48 * 60 * 60;
-				while (_points.Count > MAX_POINTS)
-					_points.RemoveAt(0);
 			}
 			catch (Exception ex)
 			{

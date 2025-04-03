@@ -31,8 +31,9 @@ namespace WinRtkHost.Models.GPS
 			{
 				//_strings.Add("UNLOGALL");		// Only do this for testing
 				//_strings.Add("FRESET");		// ..
-				_strings.Add("LOG COMCONFIG");
 				_strings.Add("LOG LOGLIST");
+				_strings.Add("LOG GPGSV ONTIME 10");
+				//StartRtkInitialiseProcess();
 			}
 			if (Program.IsLC29H)
 			{
@@ -69,6 +70,15 @@ namespace WinRtkHost.Models.GPS
 				_strings.Add("UNLOGALL");				// Stop logging to clean up log
 				_strings.Add("LOG LOGLIST");			// Record cleared default
 				_strings.Add("RTKTYPE BASE");
+				_strings.Add("LOG RTCM1005 ONTIME 1");
+				_strings.Add("LOG RTCM1006 ONTIME 1");
+				_strings.Add("LOG RTCM1019 ONTIME 1");
+				_strings.Add("LOG RTCM1020 ONTIME 1");
+				_strings.Add("LOG RTCM1033 ONTIME 1");
+				_strings.Add("LOG RTCM1042 ONTIME 1");
+				_strings.Add("LOG RTCM1044 ONTIME 1");
+				_strings.Add("LOG RTCM1046 ONTIME 1");
+				_strings.Add("LOG RTCM1048 ONTIME 1");
 				_strings.Add("LOG RTCM1077 ONTIME 1");
 				_strings.Add("LOG RTCM1087 ONTIME 1");
 				_strings.Add("LOG RTCM1097 ONTIME 1");
@@ -76,15 +86,6 @@ namespace WinRtkHost.Models.GPS
 				_strings.Add("LOG RTCM1117 ONTIME 1");
 				_strings.Add("LOG RTCM1127 ONTIME 1");
 				_strings.Add("LOG RTCM1137 ONTIME 1");
-				_strings.Add("LOG RTCM1005 ONTIME 1");
-				_strings.Add("LOG RTCM1006 ONTIME 1");
-				_strings.Add("LOG RTCM1033 ONTIME 1");
-				_strings.Add("LOG RTCM1019 ONTIME 1");
-				_strings.Add("LOG RTCM1020 ONTIME 1");
-				_strings.Add("LOG RTCM1042 ONTIME 1");
-				_strings.Add("LOG RTCM1044 ONTIME 1");
-				_strings.Add("LOG RTCM1046 ONTIME 1");
-				_strings.Add("LOG RTCM1048 ONTIME 1");
 				_strings.Add("LOG RTCM1230 ONTIME 1");
 				_strings.Add("LOG GPGGA ONTIME 1");
 				_strings.Add("INTERFACEMODE COM1 AUTO AUTO");

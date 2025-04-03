@@ -15,6 +15,13 @@ namespace WinRtkHost.Models.GPS
 	{
 		const int MAX_BUFF = 2560;
 
+		internal const string NL = "\r\n\t";
+
+		/// <summary>
+		/// Process the RTCM packets here
+		/// </summary>
+		readonly RtcmParser _rtcmParser = new RtcmParser();
+
 		/// <summary>
 		/// State of the build packet
 		/// </summary>
@@ -56,15 +63,9 @@ namespace WinRtkHost.Models.GPS
 		int _skippedIndex = 0;
 
 		/// <summary>
-		/// Dictionary of the RTK packets we have received
-		/// </summary>
-		readonly Dictionary<int, int> _msgTypeTotals = new Dictionary<int, int>();
-
-		/// <summary>
 		/// Number of read errors
 		/// </summary>
 		int _readErrorCount = 0;
-		int _missedBytesDuringError = 0;
 
 		/// <summary>
 		/// Biggest serial data packet we have received
@@ -92,25 +93,11 @@ namespace WinRtkHost.Models.GPS
 		readonly SerialPort _port;
 
 		/// <summary>
-		/// List of socket connection to NTRIP casters we are pusing RTK data to
-		/// </summary>
-		internal List<NTRIPServer> NtripCasters { get; } = new List<NTRIPServer>();
-
-		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="port">Serial port to communicate on</param>
 		public GpsParser(SerialPort port)
 		{
-			// Load NTRIP casters
-			for (int index = 0; index < 1000; index++)
-			{
-				var caster = new NTRIPServer();
-				if (!caster.LoadSettings(index))
-					break;
-				NtripCasters.Add(caster);
-			}
-
 			// Add receiver event handler
 			_port = port;
 			_port.DataReceived += OnSerialData;
@@ -136,22 +123,16 @@ namespace WinRtkHost.Models.GPS
 		/// <summary>
 		/// Socket summary
 		/// </summary>
-		override public string ToString()
+		public void LogStatus()
 		{
-			const string NL = "\r\n\t";
-			string counts = "";
-			lock (_msgTypeTotals)
-			{
-				foreach (var item in _msgTypeTotals)
-					counts += $"\t{item.Key} : {item.Value:N0}{NL}";
-			}
-
-			return $"GPS {_port.PortName} - {_gpsConnected}{NL}" +
+			Log.Note($"=============================================");
+			_rtcmParser.LogStatus();
+			Log.Note($"GPS {_port.PortName} - {_gpsConnected}{NL}" +
 				$"Read errors {_readErrorCount:N0}{NL}" +
 				$"Max buff    {_maxBufferSize}{NL}" +
 				$"ASCII ptks  {_totalAsciiPackets}{NL}" +
 				$"Location    {_locationAverage.LogMeanAndStandardDeviations()}{NL}" +
-				$"{counts}";
+				$"{_rtcmParser.GetMessageTypeCounts()}");
 		}
 
 		/// <summary>
@@ -364,60 +345,20 @@ namespace WinRtkHost.Models.GPS
 
 			// Have we reached the end of the packet
 			if (_binaryIndex >= _binaryLength)
-				return ProcessRtkPacket();
-
-			// Continue porocessing packets
-			return true;
-		}
-
-		/// <summary>
-		/// We have a complete packet. Parse out the fields and forward on to interested parties
-		/// </summary>
-		/// <returns>True if packet processed OK</returns>
-		private bool ProcessRtkPacket()
-		{
-			uint parity = GetUInt((_binaryLength - 3) * 8, 24);
-			uint calculated = Crc24.RtkCrc24(_byteArray, _binaryLength);
-			uint type = GetUInt(24, 12);
-			if (parity != calculated)
 			{
-				Log.Ln($"Checksum {type} ({parity:X6} != {calculated:X6}) [{_binaryIndex}] {_byteArray.HexAsciDump(_binaryIndex)}");
+				if (_rtcmParser.ProcessRtkPacket(_byteArray, _binaryLength))
+				{
+					// Packet complete OK
+					_gpsConnected = true;
+					_timeOfLastRtkMessage = DateTime.Now;
+					_buildState = BuildState.BuildStateNone;
+					return true;
+				}
+				// Corrupt packet
 				return false;
 			}
 
-			_gpsConnected = true;
-			_timeOfLastRtkMessage = DateTime.Now;
-
-			if (_missedBytesDuringError > 0)
-			{
-				_readErrorCount++;
-				Log.Ln($" >> E: {_readErrorCount} - Skipped {_missedBytesDuringError}");
-				_missedBytesDuringError = 0;
-			}
-
-			// Update the totals counts
-			lock (_msgTypeTotals)
-			{
-				if (_msgTypeTotals.ContainsKey((int)type))
-					_msgTypeTotals[(int)type]++;
-				else
-					_msgTypeTotals.Add((int)type, 1);
-			}
-
-			Log.Ln($"GOOD {type}[{_binaryIndex}]");
-			//Console.Write($"\r{type}[{_binaryIndex}]    \r");
-
-			// Send to NTRIP casters (Actually just queue)
-			var sendData = new byte[_binaryLength];
-			Array.Copy(_byteArray, sendData, _binaryLength);
-
-			//new RtcmParser(type, sendData);
-
-			// Post to the queues
-			foreach (var _caster in NtripCasters)
-				_caster.Send(sendData);
-
-			_buildState = BuildState.BuildStateNone;
+			// Continue processing packets
 			return true;
 		}
 
@@ -575,8 +516,7 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		internal string Shutdown()
 		{
-			foreach (var _caster in NtripCasters)
-				_caster.Shutdown();
+			_rtcmParser.Shutdown();
 			return ToString();
 		}
 	}
