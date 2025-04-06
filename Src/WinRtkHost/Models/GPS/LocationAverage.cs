@@ -82,12 +82,15 @@ namespace WinRtkHost.Models.GPS
 				//Log.Note($"H:{height} #{satellites} Q:{quality}");
 
 				// Truncate the list
-				while (_points.Count > MAX_POINTS)
-					_points.RemoveAt(0);
+				lock (_points)
+				{
+					while (_points.Count > MAX_POINTS)
+						_points.RemoveAt(0);
 
-				// Don't average fixed locations
-				if (7 != nQuality)
-					_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
+					// Don't average fixed locations
+					if (7 != nQuality)
+						_points.Add(new GeoPoint { Latitude = lat, Longitude = lng, Height = height });
+				}
 			}
 			catch (Exception ex)
 			{
@@ -100,39 +103,44 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		internal string LogMeanAndStandardDeviations()
 		{
-			var count = _points.Count;
-			if (count < 1)
-				return "No data";
 			double dLngMean = 0;
 			double dLatMean = 0;
-			double dZMean= 0;
-
-			// Calculate the mean
-			foreach (var p in _points)
-			{
-				dLngMean += p.Longitude;
-				dLatMean += p.Latitude;
-				dZMean += p.Height;
-			}
-			dLngMean /= count;
-			dLatMean /= count;
-			dZMean /= count;
-
-			// Calculate the standard deviation
+			double dZMean = 0;
 			double dLngDev = 0;
 			double dLatDev = 0;
 			double dZDev = 0;
-			foreach (var p in _points)
+			int count;
+
+			lock (_points)
 			{
-				dLngDev += (p.Longitude - dLngMean) * (p.Longitude - dLngMean);
-				dLatDev += (p.Latitude - dLatMean) * (p.Latitude - dLatMean);
-				dZDev += (p.Height - dZMean) * (p.Height - dZMean);
+				count = _points.Count;
+				if (count < 1)
+					return "No data";
+
+				// Calculate the mean
+				foreach (var p in _points)
+				{
+					dLngMean += p.Longitude;
+					dLatMean += p.Latitude;
+					dZMean += p.Height;
+				}
+				dLngMean /= count;
+				dLatMean /= count;
+				dZMean /= count;
+
+				// Calculate the standard deviation
+				foreach (var p in _points)
+				{
+					dLngDev += (p.Longitude - dLngMean) * (p.Longitude - dLngMean);
+					dLatDev += (p.Latitude - dLatMean) * (p.Latitude - dLatMean);
+					dZDev += (p.Height - dZMean) * (p.Height - dZMean);
+				}
 			}
 			dLngDev = Math.Sqrt(dLngDev / count);
 			dLatDev = Math.Sqrt(dLatDev / count);
 			dZDev = Math.Sqrt(dZDev / count);
 
-			return ($"Pnts:{count} Lat:{dLatMean}° Lng:{dLngMean}° Z:{dZMean:F4}m SD : {dLatDev * MM_PER_DEGREE:N0}mm {dLngDev * MM_PER_DEGREE:N0}mm {dZDev*1000:N0}mm");
+			return ($"Pnts:{count} Lat:{dLatMean}° Lng:{dLngMean}° Z:{dZMean:F4}m SD : {dLatDev * MM_PER_DEGREE:N0}mm {dLngDev * MM_PER_DEGREE:N0}mm {dZDev * 1000:N0}mm");
 		}
 
 		/// <summary>
