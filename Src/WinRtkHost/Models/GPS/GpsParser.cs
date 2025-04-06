@@ -4,7 +4,6 @@
 //#define VERBOSE_SHIFT
 
 using System;
-using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
 
@@ -117,6 +116,7 @@ namespace WinRtkHost.Models.GPS
 		/// </summary>
 		private void OnSerialError(object sender, SerialErrorReceivedEventArgs e)
 		{
+			_readErrorCount++;
 			Log.Ln($"E401 - Serial error {e.EventType}");
 		}
 

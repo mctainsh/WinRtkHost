@@ -6,7 +6,7 @@ namespace WinRtkHost.Models
 {
 	static class Log
 	{
-		const string LOG_PREFIX = "Log_";
+		const string LOG_PREFIX = "WinRtkLog_";
 
 		static internal string LogFileName { private set; get; } = string.Empty;
 		static DateTime _day;
@@ -14,21 +14,25 @@ namespace WinRtkHost.Models
 		static int _logLength = 0;
 		static string _logFolder;
 		static int _daysToKeep;
-		static DateTime _startTime = DateTime.Now;
+		static readonly DateTime _startTime = DateTime.Now;
 
 		/// <summary>
 		/// Enable logging with folder
 		/// </summary>
 		internal static void Setup(string logFolder, int logDaysToKeep)
 		{
-			_logFolder = logFolder;
+			if (string.IsNullOrEmpty(logFolder))
+				_logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+			else
+				_logFolder = logFolder;
 			_daysToKeep = logDaysToKeep;
+			Console.WriteLine("RTK Logs Location " + _logFolder);
+
 		}
 
 		internal static void Ln(string data) => WriteLine(data, true);
 		internal static void Note(string data) => WriteLine(data, false);
 		internal static void Data(string data) => WriteLine(data, true, false);
-
 
 		/// <summary>
 		/// Log the results to the console and to the log file

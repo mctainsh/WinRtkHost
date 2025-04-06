@@ -1,0 +1,4 @@
+ntrip.rtkdirect.com
+2101
+MaountPoint
+Password

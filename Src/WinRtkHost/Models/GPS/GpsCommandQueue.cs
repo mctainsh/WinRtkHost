@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Xml.Schema;
 using WinRtkHost.Properties;
 
 namespace WinRtkHost.Models.GPS
@@ -20,33 +20,44 @@ namespace WinRtkHost.Models.GPS
 		public string GetDeviceFirmware() => _deviceFirmware;
 		public string GetDeviceSerial() => _deviceSerial;
 
+		readonly string [] StartupCommands;
+		readonly string [] RestartCommands;
+
+		internal bool GoodConfig => StartupCommands != null && RestartCommands != null;
+
 		/// <summary>
 		/// Constructor. Setup version request but don't run it
 		/// </summary>
 		public GpsCommandQueue(SerialPort port)
 		{
-			// Handy for debugging blank system (Query current state)
 			_port = port;
-			if (Program.IsM20)
+
+			// Load Contents of file from executable folder
+			StartupCommands = LoadConfigFile("-Startup.txt");
+			RestartCommands = LoadConfigFile("-Restart.txt");
+
+			// Loadf the commands we have
+			if (!GoodConfig)
 			{
-				//_strings.Add("UNLOGALL");		// Only do this for testing
-				//_strings.Add("FRESET");		// ..
-				_strings.Add("LOG LOGLIST");
-				_strings.Add("LOG GPGSV ONTIME 10");
-				//StartRtkInitialiseProcess();
+				Log.Ln("ERROR : GPS Startup or Restart commands not found");
+				return;
 			}
-			if (Program.IsLC29H)
-			{
-				_strings.Add("PQTMVERNO");
-			}
-			if (Program.IsUM980 || Program.IsUM982)
-			{
-				//_strings.Add("UNLOG");
-				_strings.Add("CONFIG");
-				_strings.Add("VERSION");     // Used to determine device type											
-				_strings.Add("GPGGA 1");
-			}
-			//_strings.Add("FRESET");
+			_strings.AddRange(StartupCommands);
+		}
+
+		/// <summary>
+		/// Load the congifuration and remove comments and whitespace
+		/// </summary>
+		string[] LoadConfigFile(string fileSuffix)
+		{
+			// Load Contents of file from executable folder
+			var prefix = Settings.Default.GPSReceiverType.Substring(0, 3);
+			var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Configs");
+			var filePath = Path.Combine(path, prefix + fileSuffix);
+			var lines = File.ReadAllLines(filePath).ToList();
+			lines.ForEach(line => line = line.Replace('\t', ' ')); // Tabs
+			lines.RemoveAll(line => line.StartsWith("//") || line.Trim().Length == 0);
+			return lines.ToArray();
 		}
 
 		/// <summary>
@@ -62,59 +73,10 @@ namespace WinRtkHost.Models.GPS
 			}
 
 			Log.Ln("GPS Queue Start RTK Initialise Process");
-			if (Program.IsM20)
-			{
-				_strings.Add("LOG LOGLIST");            // Record current state
-				_strings.Add("FRESET");					// This resets out everything
-				_strings.Add("LOG LOGLIST");			// Record default setting
-				_strings.Add("UNLOGALL");				// Stop logging to clean up log
-				_strings.Add("LOG LOGLIST");			// Record cleared default
-				_strings.Add("RTKTYPE BASE");
-				_strings.Add("LOG RTCM1005 ONTIME 1");
-				_strings.Add("LOG RTCM1006 ONTIME 1");
-				_strings.Add("LOG RTCM1019 ONTIME 1");
-				_strings.Add("LOG RTCM1020 ONTIME 1");
-				_strings.Add("LOG RTCM1033 ONTIME 1");
-				_strings.Add("LOG RTCM1042 ONTIME 1");
-				_strings.Add("LOG RTCM1044 ONTIME 1");
-				_strings.Add("LOG RTCM1046 ONTIME 1");
-				_strings.Add("LOG RTCM1048 ONTIME 1");
-				_strings.Add("LOG RTCM1077 ONTIME 1");
-				_strings.Add("LOG RTCM1087 ONTIME 1");
-				_strings.Add("LOG RTCM1097 ONTIME 1");
-				_strings.Add("LOG RTCM1107 ONTIME 1");
-				_strings.Add("LOG RTCM1117 ONTIME 1");
-				_strings.Add("LOG RTCM1127 ONTIME 1");
-				_strings.Add("LOG RTCM1137 ONTIME 1");
-				_strings.Add("LOG RTCM1230 ONTIME 1");
-				_strings.Add("LOG GPGGA ONTIME 1");
-				_strings.Add("INTERFACEMODE COM1 AUTO AUTO");
-				_strings.Add("INTERFACEMODE COM3 AUTO AUTO");
-				_strings.Add("PPSCONTROL ENABLE POSITIVE 1 100000");
-				_strings.Add("FIX NONE");
-				_strings.Add("SAVECONFIG");					// Save for later
-				_strings.Add("REBOOT");
-				_strings.Add("LOG LOGLIST");
-			}
-			if (Program.IsLC29H)
-			{
-				_strings.Add("PQTMCFGSVIN,W,1,43200,0,0,0,0");
-				_strings.Add("PAIR432,1");
-				_strings.Add("PAIR434,1");
-				_strings.Add("PAIR436,1");
-			}
+			_strings.AddRange(RestartCommands);
+
 			if (Program.IsUM980 || Program.IsUM982)
 			{
-				// Setup RTCM V3
-				_strings.Add("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
-				_strings.Add("RTCM1033 30"); // Receiver and antenna description
-				_strings.Add("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-				_strings.Add("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-				_strings.Add("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-				_strings.Add("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-				_strings.Add("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-				_strings.Add("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.	
-
 				var address = Settings.Default.BaseStationAddress;
 				if (address.IsNullOrEmpty())
 					_strings.Add($"MODE BASE TIME {60 * 60} 0.01");                      // Set base mode with 6 hours startup and 1cm optimized save error

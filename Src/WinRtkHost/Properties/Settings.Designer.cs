@@ -34,7 +34,7 @@ namespace WinRtkHost.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("COM5")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string ComPort {
             get {
                 return ((string)(this["ComPort"]));
@@ -52,19 +52,19 @@ namespace WinRtkHost.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Temp\\WinRtkHostLogs")]
-        public string LogFolder {
+        [global::System.Configuration.DefaultSettingValueAttribute("14")]
+        public int LogDaysToKeep {
             get {
-                return ((string)(this["LogFolder"]));
+                return ((int)(this["LogDaysToKeep"]));
             }
         }
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("14")]
-        public int LogDaysToKeep {
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LogFolder {
             get {
-                return ((int)(this["LogDaysToKeep"]));
+                return ((string)(this["LogFolder"]));
             }
         }
     }

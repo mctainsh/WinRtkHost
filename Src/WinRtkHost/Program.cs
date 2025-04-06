@@ -1,16 +1,12 @@
 ﻿using System;
-using System.IO.Ports;
-using System.Linq;
+using System.ServiceProcess;
 using WinRtkHost.Models;
-using WinRtkHost.Models.GPS;
 using WinRtkHost.Properties;
 
 namespace WinRtkHost
 {
 	class Program
 	{
-		static GpsParser _gpsParser;
-
 		internal static bool IsLC29H { private set; get; }
 		internal static bool IsUM980 { private set; get; }
 		internal static bool IsUM982 { private set; get; }
@@ -23,6 +19,9 @@ namespace WinRtkHost
 		{
 			try
 			{
+				// Global exception handler
+				AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
 				// Setup logging
 				var s = Settings.Default;
 				Log.Setup(s.LogFolder, s.LogDaysToKeep);
@@ -44,113 +43,41 @@ namespace WinRtkHost
 					return;
 				}
 
-				var port = RestartSerialPort();
+				// Launch the main service
+				var service = new RtkMainService();
+				var ServicesToRun = new ServiceBase[]
+				{
+					service
+				};
 
-				var lastStatus = DateTime.Now; // Slow status timer
-
-				// Loop until 'q' key is pressed
+#if DEBUG
+				// vvvvvvvvvvvv  TESTING ONLY vvvvvvvvvvvv
+				service.TestingStart();
 				while (true)
 				{
-					try
-					{
-						// Check the serial port is open
-						while (port is null || !port.IsOpen)
-						{
-							Log.Ln("Port closed");
-							System.Threading.Thread.Sleep(5_000);
-							port = RestartSerialPort();
-						}
-
-						// Q to exit
-						if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
-							break;
-
-						System.Threading.Thread.Sleep(100);
-
-						// Check for timeouts
-						_gpsParser.CheckTimeouts();
-
-						// TODO : Every minute display the current stats
-						if ((DateTime.Now - lastStatus).TotalSeconds > 60)
-						{
-							lastStatus = DateTime.Now;
-							_gpsParser.LogStatus();
-						}
-					}
-					catch (Exception ex)
-					{
-						Log.Ln("E932: In main loop " + ex.ToString());
-					}
+					System.Threading.Thread.Sleep(1000);
 				}
-				port.Close();
-				_gpsParser.Shutdown();
-				Log.Ln("EXIT Via key press!");
+				// ^^^^^^^^^^^^  TESTING ONLY ^^^^^^^^^^^^
+#else
+				ServiceBase.Run(ServicesToRun);
+
+				// We are complete
+				Log.Ln("Service completed");
+#endif
 			}
 			catch (Exception ex)
 			{
+				Console.WriteLine(ex.ToString());
 				Log.Ln(ex.ToString());
 			}
 		}
 
 		/// <summary>
-		/// Restablish the serial port comminications
+		/// Global exception
 		/// </summary>
-		static SerialPort RestartSerialPort()
+		static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
 		{
-			// Get the COM port
-			var portName = Settings.Default.ComPort;
-
-			// List serial ports
-			var portNames = SerialPort.GetPortNames();
-			if (portNames.Length == 0)
-			{
-				Log.Ln("ERROR : No COM ports found");
-				return null;
-			}
-
-			Log.Ln("Available COM Ports:");
-			foreach (var p in portNames)
-			{
-				if (p == portName)
-					Log.Ln("\t\t" + p + " (SELECTED)");
-				else
-					Log.Data("\t\t" + p);
-			}
-			if (portName.IsNullOrEmpty())
-			{
-				portName = portNames[0];
-				Log.Ln($" - No COM port specified (Using '{portName}')");
-			}
-			else if (!portNames.Contains(portName))
-			{
-				Log.Ln($" - Selected '{portName}' port not found");
-				return null;
-			}
-
-			// Open serial port
-			try
-			{
-				var port = new SerialPort(portName,
-					115200,
-					Parity.None, 8, StopBits.One);
-				port.Open();
-				if (!port.IsOpen)
-				{
-					Log.Ln($" - FAILED to open '{portName}'");
-					return null;
-				}
-				Log.Ln($" - Port {portName} opened");
-
-				// Create the GPS parser
-				_gpsParser?.Shutdown();
-				_gpsParser = new GpsParser(port);
-				return port;
-			}
-			catch (Exception ex)
-			{
-				Log.Ln("E931: Error opening port " + ex.Message);
-				return null;
-			}
+			Log.Ln("CurrentDomain_UnhandledException *** EXCEPTION OBJECT *** " + e.ExceptionObject);
 		}
 	}
 }

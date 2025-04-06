@@ -14,7 +14,7 @@ namespace WinRtkHost.Models.GPS
 		/// List of socket connection to NTRIP casters we are pusing RTK data to
 		/// </summary>
 		internal List<NTRIPServer> NtripCasters { get; } = new List<NTRIPServer>();
-		
+
 		/// <summary>
 		/// Current complete packet we are working on
 		/// </summary>
@@ -39,7 +39,7 @@ namespace WinRtkHost.Models.GPS
 		/// We have a complete packet. Parse out the fields and forward on to interested parties
 		/// </summary>
 		/// <returns>True if packet processed OK. False indicates we have bad data and need to dump this packet</returns>
-		internal bool ProcessRtkPacket( byte [] _byteArray, int _binaryLength)
+		internal bool ProcessRtkPacket(byte[] _byteArray, int _binaryLength)
 		{
 			// Send to NTRIP casters (Actually just queue)
 			_data = new byte[_binaryLength];
@@ -63,7 +63,7 @@ namespace WinRtkHost.Models.GPS
 					_msgTypeTotals.Add((int)type, 1);
 			}
 
-			Log.Ln($"GOOD {type}[{_binaryLength}]");
+			Log.Ln($"Rtk {type}[{_binaryLength}]");
 			//Console.Write($"\r{type}[{_binaryIndex}]    \r");
 
 			// Post to the queues
@@ -155,7 +155,7 @@ TOTAL 152
 			var singleReceiverOscillatorIndicator = GetUInt(ref index, 1); // Single Receiver Oscillator Indicator
 			var reserved = GetUInt(ref index, 1); // Reserved
 			var ecefY = GetInt64(ref index, 38); // Antenna Reference Point ECEF-Y
-			//var ecefY = (Int64)GetUInt64(ref index, 38) * -1; // Antenna Reference Point ECEF-Y
+												 //var ecefY = (Int64)GetUInt64(ref index, 38) * -1; // Antenna Reference Point ECEF-Y
 			var quarterCycleIndicator = GetUInt(ref index, 2); // Quarter Cycle Indicator
 			var ecefZ = GetInt64(ref index, 38); // Antenna Reference Point ECEF-Z
 
