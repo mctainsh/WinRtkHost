@@ -1,0 +1,5 @@
+﻿UNLOGALL
+CONFIG
+VERSION
+// You only need to run FRESET one. Comment out FRESET if you want to keep the settings
+FRESET

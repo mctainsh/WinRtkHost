@@ -89,19 +89,19 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Configs\LC29-Restart.txt">
+    <Content Include="Configs\LC2-Restart.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Configs\LC29-Startup.txt">
+    <Content Include="Configs\LC2-Startup.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Configs\M20-Restart.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Configs\UM98-Restart.txt">
+    <Content Include="Configs\UM9-Restart.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Configs\UM98-Startup.txt">
+    <Content Include="Configs\UM9-Startup.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Configs\M20-Startup.txt">

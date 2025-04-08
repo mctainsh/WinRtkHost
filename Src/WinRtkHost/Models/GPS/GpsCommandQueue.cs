@@ -55,7 +55,11 @@ namespace WinRtkHost.Models.GPS
 			var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Configs");
 			var filePath = Path.Combine(path, prefix + fileSuffix);
 			var lines = File.ReadAllLines(filePath).ToList();
-			lines.ForEach(line => line = line.Replace('\t', ' ')); // Tabs
+
+			// Remove tabs
+			lines.ForEach(line => line = line.Replace('\t', ' '));
+
+			// Remove comments and empty lines
 			lines.RemoveAll(line => line.StartsWith("//") || line.Trim().Length == 0);
 			return lines.ToArray();
 		}
@@ -86,10 +90,12 @@ namespace WinRtkHost.Models.GPS
 			if (Program.IsUM980)
 			{
 				_strings.Add("CONFIG SIGNALGROUP 2"); // Enable RTCM3
+				_strings.Add("SAVECONFIG");
 			}
 			if (Program.IsUM982)
 			{
 				_strings.Add("CONFIG SIGNALGROUP 3 6"); // Enable RTCM3
+				_strings.Add("SAVECONFIG");
 			}
 
 			SendTopCommand();
@@ -202,6 +208,15 @@ namespace WinRtkHost.Models.GPS
 
 			if (str.StartsWith("$G"))
 				return false;
+
+			// FRESET requires a complete reset
+			if (_strings.FirstOrDefault().StartsWith("FRESET"))
+			{
+				if (!str.StartsWith("$devicename,COM"))
+					return false;
+				AcknowledgedQueueItem();
+				return true;
+			}
 
 			if (Program.IsM20)
 				return ProcessM20(str);

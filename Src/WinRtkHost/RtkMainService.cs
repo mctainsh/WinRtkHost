@@ -69,7 +69,7 @@ namespace WinRtkHost
 		{
 			Log.Ln("Stopping service...");
 			_keepRunning = false;
-			_gpsParser.Shutdown();
+			_gpsParser?.Shutdown();
 		}
 
 		/// <summary>
@@ -88,6 +88,8 @@ namespace WinRtkHost
 					// Check the serial port is open
 					while (port is null || !port.IsOpen)
 					{
+						if (!_keepRunning)
+							return;
 						Log.Ln("Port closed");
 						System.Threading.Thread.Sleep(5_000);
 						port = RestartSerialPort();
@@ -112,7 +114,6 @@ namespace WinRtkHost
 			}
 			port.Close();
 		}
-
 
 
 		/// <summary>

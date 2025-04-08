@@ -25,7 +25,7 @@ namespace WinRtkHost.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("M20")]
+        [global::System.Configuration.DefaultSettingValueAttribute("UM982")]
         public string GPSReceiverType {
             get {
                 return ((string)(this["GPSReceiverType"]));
