@@ -64,9 +64,9 @@ namespace WinRtkHost.Models
 		/// </summary>
 		/// <param name="index">Index of file on current directory</param>
 		/// <returns>True if load occured</returns>
-		public bool LoadSettings(int index)
+		public bool LoadSettings(string folder, int index)
 		{
-			string fileName = $"Caster{index}.txt";
+			var fileName = Path.Combine(folder, $"Caster{index}.txt");
 			if (!File.Exists(fileName))
 				return false;
 			Log.Ln("Processing " + fileName);

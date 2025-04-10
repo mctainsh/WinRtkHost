@@ -26,12 +26,23 @@ namespace WinRtkHost.Models.GPS
 		internal RtcmParser()
 		{
 			// Load NTRIP casters
+			var folder = AppDomain.CurrentDomain.BaseDirectory;
 			for (int index = 0; index < 1000; index++)
 			{
 				var caster = new NTRIPServer();
-				if (!caster.LoadSettings(index))
+				if (!caster.LoadSettings(folder, index))
 					break;
 				NtripCasters.Add(caster);
+			}
+
+			// Display warning if not casters found
+			if (NtripCasters.Count == 0)
+			{
+				Log.Ln("WARNING : No NTRIP casters found. No RTK data will be sent");
+				Log.Ln($" - Checked in {AppDomain.CurrentDomain.BaseDirectory}. Only found");
+				foreach (var file in System.IO.Directory.GetFiles(folder))
+					Log.Ln($"   - {file.Substring(folder.Length)}");
+				return;
 			}
 		}
 

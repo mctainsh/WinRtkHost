@@ -10,6 +10,7 @@ namespace WinRtkHost
 		internal static bool IsLC29H { private set; get; }
 		internal static bool IsUM980 { private set; get; }
 		internal static bool IsUM982 { private set; get; }
+		internal static bool IsUM98x { private set; get; }
 		internal static bool IsM20 { private set; get; }
 
 		/// <summary>
@@ -30,6 +31,7 @@ namespace WinRtkHost
 				IsUM980 = s.GPSReceiverType == "UM980";
 				IsUM982 = s.GPSReceiverType == "UM982";
 				IsM20 = s.GPSReceiverType == "M20";
+				IsUM98x = IsUM980 || IsUM982;
 
 				Log.Ln($"Starting receiver '{s.GPSReceiverType}'\r\n" +
 							$"\t M20   : {IsM20}\r\n" +

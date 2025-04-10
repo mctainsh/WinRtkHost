@@ -210,7 +210,7 @@ namespace WinRtkHost.Models.GPS
 				return false;
 
 			// FRESET requires a complete reset
-			if (_strings.FirstOrDefault().StartsWith("FRESET"))
+			if (_strings.FirstOrDefault().StartsWith("FRESET") && Program.IsUM98x)
 			{
 				if (!str.StartsWith("$devicename,COM"))
 					return false;
